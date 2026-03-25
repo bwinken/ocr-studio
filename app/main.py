@@ -47,7 +47,7 @@ async def lifespan(app: FastAPI):
 load_dotenv()
 
 app = FastAPI(
-    title="Image Doc Translator",
+    title="OCR Studio",
     version="0.1.0",
     lifespan=lifespan,
 )
