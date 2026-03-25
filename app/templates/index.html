@@ -6,7 +6,7 @@
     <title>OCR Studio</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23202020%22/><text x=%2250%22 y=%2268%22 font-size=%2250%22 text-anchor=%22middle%22 fill=%22%23f97316%22>T</text></svg>">
     <style>
-        :root { --c:#f97316; --ch:#ea580c; --bg:#1a1a1a; --bg2:#222; --bg3:#2a2a2a; --bd:#333; --t:#d4d4d4; --td:#777; --ok:#22c55e; --blue:#3b82f6; }
+        :root { --c:#f97316; --ch:#ea580c; --bg:#1a1a1a; --bg2:#222; --bg3:#2a2a2a; --bd:#333; --t:#d4d4d4; --td:#777; --ok:#22c55e; --blue:#3b82f6; --purple:#a855f7; }
         *{margin:0;padding:0;box-sizing:border-box}
         body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--t);height:100vh;display:flex;flex-direction:column;overflow:hidden}
 
@@ -16,30 +16,68 @@
         .btn{background:#3c3c3c;border:1px solid transparent;color:#ccc;padding:5px 12px;border-radius:4px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;gap:5px;transition:all .15s;white-space:nowrap}
         .btn:hover{background:#505050;color:#fff}
         .btn:disabled{opacity:.4;cursor:not-allowed}
-        .btn-c{background:var(--c);color:#fff;border-color:var(--ch)}
-        .btn-c:hover{background:var(--ch)}
 
         .main{display:flex;flex:1;overflow:hidden}
 
         /* ── Left Panel ── */
         .left{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative}
 
-        /* Drop / Paste board */
         .board{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:auto;background-image:radial-gradient(#2a2a2a 1px,transparent 1px);background-size:20px 20px;position:relative;cursor:default;transition:background .2s}
         .board.drag-on{background-color:rgba(249,115,22,.06)}
 
-        .board-hint{display:flex;flex-direction:column;align-items:center;gap:14px;pointer-events:none;user-select:none}
-        .board-hint svg{width:52px;height:52px;color:#444}
-        .board-hint .bh-title{font-size:18px;color:#666;font-weight:600}
-        .board-hint .bh-sub{font-size:12px;color:#555;line-height:1.7;text-align:center}
-        .board-hint .bh-sub kbd{background:#333;color:#aaa;padding:1px 6px;border-radius:3px;font-size:11px;font-family:inherit;border:1px solid #444}
-        .board-hint .bh-or{color:#444;font-size:11px;margin:2px 0}
-        .board-hint .bh-browse{pointer-events:auto;color:var(--c);cursor:pointer;font-size:13px;font-weight:600;transition:color .15s}
-        .board-hint .bh-browse:hover{color:var(--ch);text-decoration:underline}
+        /* ── Home: mode cards + upload ── */
+        .home-view{display:flex;flex-direction:column;align-items:center;gap:32px;padding:40px 30px;max-width:720px;width:100%}
 
-        /* PDF viewer within left panel */
+        .home-title{font-size:22px;font-weight:700;color:var(--t);text-align:center}
+        .home-sub{font-size:13px;color:var(--td);text-align:center;margin-top:-20px}
+
+        /* Mode cards */
+        .mode-cards{display:flex;gap:14px;width:100%}
+        .mode-card{flex:1;background:var(--bg3);border:2px solid var(--bd);border-radius:12px;padding:20px 16px;cursor:pointer;transition:all .2s;text-align:center;position:relative}
+        .mode-card:hover{border-color:#555;transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+        .mode-card.selected{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.3)}
+        .mode-card.selected.m-extract{border-color:var(--blue);background:rgba(59,130,246,.08)}
+        .mode-card.selected.m-replace{border-color:var(--c);background:rgba(249,115,22,.08)}
+        .mode-card.selected.m-translate{border-color:var(--purple);background:rgba(168,85,247,.08)}
+
+        .mc-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 12px}
+        .m-extract .mc-icon{background:rgba(59,130,246,.15);color:var(--blue)}
+        .m-replace .mc-icon{background:rgba(249,115,22,.15);color:var(--c)}
+        .m-translate .mc-icon{background:rgba(168,85,247,.15);color:var(--purple)}
+
+        .mc-name{font-size:15px;font-weight:700;margin-bottom:6px}
+        .m-extract .mc-name{color:var(--blue)}
+        .m-replace .mc-name{color:var(--c)}
+        .m-translate .mc-name{color:var(--purple)}
+
+        .mc-desc{font-size:11px;color:var(--td);line-height:1.6}
+
+        .mc-check{position:absolute;top:10px;right:10px;width:20px;height:20px;border-radius:50%;border:2px solid #444;display:flex;align-items:center;justify-content:center;transition:all .2s}
+        .mode-card.selected .mc-check{border-color:transparent}
+        .m-extract.selected .mc-check{background:var(--blue)}
+        .m-replace.selected .mc-check{background:var(--c)}
+        .m-translate.selected .mc-check{background:var(--purple)}
+        .mc-check::after{content:'';display:none;width:5px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg);margin-top:-1px}
+        .mode-card.selected .mc-check::after{display:block}
+
+        /* Language row under translate card */
+        .lang-pick{display:flex;align-items:center;gap:8px;margin-top:12px;justify-content:center}
+        .lang-pick label{font-size:11px;color:var(--td)}
+        .lang-pick select{background:#333;color:#ccc;border:1px solid #555;padding:4px 8px;border-radius:4px;font-size:12px;outline:none}
+
+        /* Upload zone */
+        .upload-zone{width:100%;border:2px dashed #3a3a3a;border-radius:12px;padding:32px 20px;text-align:center;cursor:pointer;transition:all .2s}
+        .upload-zone:hover{border-color:var(--c);background:rgba(249,115,22,.04)}
+        .upload-zone.drag-on{border-color:var(--c);background:rgba(249,115,22,.08)}
+        .uz-icon{display:flex;justify-content:center;margin-bottom:10px}
+        .uz-icon svg{width:36px;height:36px;color:#555}
+        .uz-title{font-size:14px;color:var(--t);font-weight:600;margin-bottom:4px}
+        .uz-sub{font-size:11px;color:var(--td);line-height:1.7}
+        .uz-sub kbd{background:#333;color:#aaa;padding:1px 5px;border-radius:3px;font-size:10px;font-family:inherit;border:1px solid #444}
+
+        /* ── Doc View (after upload) ── */
         .pdf-bar{height:36px;background:var(--bg2);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 10px;gap:8px;flex-shrink:0}
-        .pdf-bar .pg-nav{display:flex;align-items:center;gap:4px}
+        .pg-nav{display:flex;align-items:center;gap:4px}
         .pg-btn{background:none;border:none;color:#999;cursor:pointer;font-size:16px;padding:2px 6px;border-radius:3px}
         .pg-btn:hover{background:#3c3c3c;color:#fff}
         .pg-label{font-size:12px;color:var(--td);min-width:60px;text-align:center}
@@ -57,43 +95,29 @@
         .obox.pymupdf{border-color:rgba(59,130,246,.5);background:rgba(59,130,246,.08)}
         .hide-boxes .obox{opacity:0}
 
-        /* Loading overlay */
         .lov{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:50}
         .lov.on{display:flex}
         .sp{width:24px;height:24px;border:3px solid rgba(255,255,255,.15);border-top-color:var(--c);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:8px}
         @keyframes spin{to{transform:rotate(360deg)}}
         .lt{font-size:12px;color:#ccc}
-
-        /* Progress bar */
         .pbar-w{height:3px;background:var(--bd);overflow:hidden;display:none;flex-shrink:0}
         .pbar-w.on{display:block}
         .pbar{height:100%;background:var(--c);transition:width .3s;width:0}
 
         /* ── Right Panel (Editor) ── */
         .right{width:420px;min-width:320px;max-width:50vw;background:var(--bg2);border-left:1px solid var(--bd);display:flex;flex-direction:column;overflow:hidden}
-
         .right-header{padding:10px 14px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
         .rh-title{font-size:13px;font-weight:700;color:var(--t)}
 
-        /* Mode selector */
-        .mode-bar{padding:8px 14px;border-bottom:1px solid var(--bd);display:flex;flex-wrap:wrap;gap:6px;flex-shrink:0}
-        .mode-chip{padding:5px 12px;border-radius:16px;font-size:11px;font-weight:600;background:#2a2a2a;color:#999;border:1px solid #3a3a3a;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px}
-        .mode-chip:hover{color:#ccc;border-color:#555}
-        .mode-chip.active{background:var(--c);color:#fff;border-color:var(--c)}
-        .mode-chip .chip-icon{font-size:12px}
+        /* Active mode indicator in right panel */
+        .active-mode{padding:10px 14px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px;flex-shrink:0}
+        .am-dot{width:8px;height:8px;border-radius:50%}
+        .am-dot.c-blue{background:var(--blue)}.am-dot.c-orange{background:var(--c)}.am-dot.c-purple{background:var(--purple)}
+        .am-label{font-size:12px;font-weight:600}
+        .am-label.c-blue{color:var(--blue)}.am-label.c-orange{color:var(--c)}.am-label.c-purple{color:var(--purple)}
+        .am-change{margin-left:auto;font-size:11px;color:var(--td);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+        .am-change:hover{color:var(--t)}
 
-        /* Translate toggle row */
-        .translate-row{padding:8px 14px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px;flex-shrink:0}
-        .tgl{position:relative;width:36px;height:20px;cursor:pointer}
-        .tgl input{opacity:0;width:0;height:0}
-        .tgl-slider{position:absolute;top:0;left:0;right:0;bottom:0;background:#3c3c3c;border-radius:10px;transition:.2s}
-        .tgl-slider::before{content:'';position:absolute;left:2px;bottom:2px;width:16px;height:16px;background:#888;border-radius:50%;transition:.2s}
-        .tgl input:checked+.tgl-slider{background:var(--c)}
-        .tgl input:checked+.tgl-slider::before{transform:translateX(16px);background:#fff}
-        .tr-label{font-size:12px;color:var(--td);flex-shrink:0}
-        .translate-row select{background:#3c3c3c;color:#ccc;border:1px solid #555;padding:4px 8px;border-radius:4px;font-size:12px;outline:none;flex:1}
-
-        /* Editor body */
         .editor-body{flex:1;display:flex;flex-direction:column;overflow:hidden}
         .editor-area{flex:1;overflow:hidden;display:flex;flex-direction:column}
         .editor-area textarea{flex:1;width:100%;background:transparent;border:none;color:var(--t);padding:12px 14px;font-size:13px;font-family:Consolas,"Fira Code",Monaco,monospace;resize:none;outline:none;line-height:1.7}
@@ -104,13 +128,10 @@
         .editor-empty .ee-title{font-size:14px;font-weight:600}
         .editor-empty .ee-sub{font-size:11px;color:#3a3a3a;text-align:center;line-height:1.6}
 
-        /* Action footer */
         .editor-footer{padding:10px 14px;border-top:1px solid var(--bd);display:flex;gap:6px;align-items:center;flex-shrink:0}
         .editor-footer .spacer{flex:1}
 
-        /* Status bar */
         .sbar{height:22px;background:var(--bg2);border-top:1px solid var(--bd);display:flex;align-items:center;padding:0 12px;font-size:10px;color:var(--td);justify-content:space-between;flex-shrink:0}
-
         .hidden{display:none!important}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
     </style>
@@ -130,9 +151,8 @@
 </header>
 
 <div class="main">
-    <!-- ═══ Left: Board / Viewer ═══ -->
+    <!-- ═══ Left Panel ═══ -->
     <div class="left">
-        <!-- PDF navigation bar (hidden until PDF loaded) -->
         <div class="pdf-bar hidden" id="pdf-bar">
             <div class="pg-nav">
                 <button class="pg-btn" onclick="navPage(-1)">&#9664;</button>
@@ -142,27 +162,66 @@
             <div class="pg-thumbs" id="pg-thumbs"></div>
         </div>
 
-        <!-- Board: paste / drop / view -->
         <div class="board" id="board">
-            <!-- Initial hints (hidden after upload) -->
-            <div class="board-hint" id="board-hint">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="3"/>
-                    <path d="M3 15l4-4a2 2 0 0 1 2.8 0L14 15"/>
-                    <path d="M14 13l1-1a2 2 0 0 1 2.8 0L21 15"/>
-                    <circle cx="8.5" cy="8.5" r="1.5"/>
-                </svg>
-                <div class="bh-title">Paste, Drop, or Upload</div>
-                <div class="bh-sub">
-                    <kbd>Ctrl</kbd> + <kbd>V</kbd> to paste an image from clipboard<br>
-                    <span class="bh-or">or</span><br>
-                    Drag & drop a PDF / image here<br>
-                    <span class="bh-or">or</span>
+            <!-- ── Home view: mode selection + upload ── -->
+            <div class="home-view" id="home-view">
+                <div class="home-title">What would you like to do?</div>
+                <div class="home-sub">Pick a mode, then upload your document</div>
+
+                <div class="mode-cards">
+                    <div class="mode-card m-extract selected" data-mode="extract" onclick="pickMode(this)">
+                        <div class="mc-check"></div>
+                        <div class="mc-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        </div>
+                        <div class="mc-name">Extract</div>
+                        <div class="mc-desc">OCR the document and get the text as Markdown</div>
+                    </div>
+
+                    <div class="mode-card m-replace" data-mode="replace" onclick="pickMode(this)">
+                        <div class="mc-check"></div>
+                        <div class="mc-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                        </div>
+                        <div class="mc-name">Replace</div>
+                        <div class="mc-desc">OCR and overlay recognized text back onto the document</div>
+                    </div>
+
+                    <div class="mode-card m-translate" data-mode="translate" onclick="pickMode(this)">
+                        <div class="mc-check"></div>
+                        <div class="mc-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                        </div>
+                        <div class="mc-name">Translate</div>
+                        <div class="mc-desc">OCR, translate to another language, then export as PDF</div>
+                        <div class="lang-pick" id="lang-pick-home">
+                            <label>Target:</label>
+                            <select id="tlang" onclick="event.stopPropagation()">
+                                <option value="English">English</option>
+                                <option value="Traditional Chinese">繁體中文</option>
+                                <option value="Simplified Chinese">简体中文</option>
+                                <option value="Japanese">日本語</option>
+                                <option value="Korean">한국어</option>
+                                <option value="German">Deutsch</option>
+                                <option value="French">Français</option>
+                                <option value="Spanish">Español</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
-                <div class="bh-browse" onclick="$('fin').click()">Browse files...</div>
+
+                <div class="upload-zone" id="uzone" onclick="$('fin').click()">
+                    <div class="uz-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    </div>
+                    <div class="uz-title">Drop file here, or click to browse</div>
+                    <div class="uz-sub">
+                        Supports PDF and images &nbsp;|&nbsp; Or press <kbd>Ctrl</kbd>+<kbd>V</kbd> to paste from clipboard
+                    </div>
+                </div>
             </div>
 
-            <!-- Canvas (hidden until upload) -->
+            <!-- ── Canvas (shown after upload) ── -->
             <div class="canvas-wrap hidden" id="canvas-wrap">
                 <div class="cw" id="cw">
                     <img id="pimg">
@@ -175,78 +234,49 @@
                 <div class="lt" id="ltxt">Processing...</div>
             </div>
         </div>
-
         <div class="pbar-w" id="pbarw"><div class="pbar" id="pbar"></div></div>
     </div>
 
-    <!-- ═══ Right: Editor ═══ -->
+    <!-- ═══ Right Panel (Editor) ═══ -->
     <div class="right">
         <div class="right-header">
-            <span class="rh-title" id="rh-title">Editor</span>
-            <div style="display:flex;gap:4px" id="editor-actions" style="display:none">
+            <span class="rh-title" id="rh-title">Output</span>
+            <div style="display:flex;gap:4px" id="editor-actions">
                 <button class="btn" style="font-size:11px;padding:3px 8px" onclick="copyResult()" title="Copy to clipboard">Copy</button>
             </div>
         </div>
 
-        <!-- Mode chips (hidden until loaded) -->
-        <div class="mode-bar hidden" id="mode-bar">
-            <div class="mode-chip active" data-mode="markdown" onclick="setMode(this)">
-                <span class="chip-icon">&#128196;</span> Markdown
-            </div>
-            <div class="mode-chip" data-mode="searchable" onclick="setMode(this)">
-                <span class="chip-icon">&#128451;</span> Searchable PDF
-            </div>
-            <div class="mode-chip" data-mode="replace" onclick="setMode(this)">
-                <span class="chip-icon">&#128221;</span> Replace Text
-            </div>
+        <!-- Active mode indicator (shown after upload) -->
+        <div class="active-mode hidden" id="active-mode">
+            <div class="am-dot" id="am-dot"></div>
+            <span class="am-label" id="am-label"></span>
+            <span class="am-change" onclick="resetAll()">change</span>
         </div>
 
-        <!-- Translate toggle (hidden until loaded) -->
-        <div class="translate-row hidden" id="translate-row">
-            <label class="tgl">
-                <input type="checkbox" id="tgl-translate">
-                <span class="tgl-slider"></span>
-            </label>
-            <span class="tr-label">Translate to</span>
-            <select id="tlang">
-                <option value="English">English</option>
-                <option value="Traditional Chinese">繁體中文</option>
-                <option value="Simplified Chinese">简体中文</option>
-                <option value="Japanese">日本語</option>
-                <option value="Korean">한국어</option>
-                <option value="German">Deutsch</option>
-                <option value="French">Français</option>
-                <option value="Spanish">Español</option>
-            </select>
-        </div>
-
-        <!-- Editor content -->
         <div class="editor-body">
-            <!-- Empty state -->
             <div class="editor-empty" id="editor-empty">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
-                <div class="ee-title">OCR output will appear here</div>
-                <div class="ee-sub">Upload or paste an image on the left<br>then click <b>Run</b> to start OCR</div>
+                <div class="ee-title">Output will appear here</div>
+                <div class="ee-sub">Pick a mode on the left, upload a file,<br>then click <b>Run</b> to start</div>
             </div>
-
-            <!-- Text area (hidden until result) -->
             <div class="editor-area hidden" id="editor-area">
-                <textarea id="rtxt" placeholder="OCR result will appear here..."></textarea>
+                <textarea id="rtxt" placeholder="Result will appear here..." readonly></textarea>
             </div>
         </div>
 
-        <!-- Footer: Run + Download -->
         <div class="editor-footer">
             <span style="font-size:11px;color:var(--td)" id="footer-info"></span>
             <div class="spacer"></div>
             <button class="btn" id="btn-download" onclick="downloadResult()" style="display:none">Download</button>
-            <button class="btn btn-c" id="btn-run" onclick="runAction()" disabled>Run</button>
+            <button class="btn" style="background:var(--c);color:#fff;border-color:var(--ch);font-weight:600" id="btn-run" onclick="runAction()" disabled>
+                &#9654;&ensp;Run
+            </button>
         </div>
     </div>
 </div>
 
 <div class="sbar">
-    <span id="stext">Ready — paste an image or drag a file</span>
+    <span id="stext">Pick a mode and upload a file to get started</span>
     <span id="sright"></span>
 </div>
 
@@ -254,44 +284,49 @@
 const $ = id => document.getElementById(id);
 const API = '/api';
 
-let docId = null;
-let pages = [];
-let curPage = -1;
-let currentMode = 'markdown';
-let resultBlob = null;
+let docId = null, pages = [], curPage = -1, currentMode = 'extract', resultBlob = null;
 
-// ═══ Paste handler (Ctrl+V) ═══
+const MODE_META = {
+    extract:   { label: 'Extract',   color: 'blue',   desc: 'OCR → Markdown text' },
+    replace:   { label: 'Replace',   color: 'orange', desc: 'OCR → text overlay on document' },
+    translate: { label: 'Translate', color: 'purple', desc: 'OCR → translate → PDF' },
+};
+
+// ═══ Mode selection ═══
+function pickMode(el) {
+    document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    currentMode = el.dataset.mode;
+}
+
+// ═══ Paste (Ctrl+V) ═══
 document.addEventListener('paste', async (e) => {
     const items = e.clipboardData?.items;
     if (!items) return;
     for (const item of items) {
         if (item.type.startsWith('image/')) {
             e.preventDefault();
-            const file = item.getAsFile();
-            if (file) await upload(file);
+            if (item.getAsFile()) await upload(item.getAsFile());
             return;
         }
     }
 });
 
-// ═══ Drag & Drop on board ═══
+// ═══ Drag & Drop ═══
 const board = $('board');
 board.addEventListener('dragover', e => { e.preventDefault(); board.classList.add('drag-on'); });
 board.addEventListener('dragleave', () => board.classList.remove('drag-on'));
 board.addEventListener('drop', e => {
-    e.preventDefault();
-    board.classList.remove('drag-on');
+    e.preventDefault(); board.classList.remove('drag-on');
     if (e.dataTransfer.files.length) upload(e.dataTransfer.files[0]);
 });
 
-// ═══ File input ═══
 $('fin').addEventListener('change', e => { if (e.target.files.length) upload(e.target.files[0]); e.target.value = ''; });
 
 // ═══ Upload ═══
 async function upload(file) {
     loading(true, 'Uploading...');
-    const fd = new FormData();
-    fd.append('file', file);
+    const fd = new FormData(); fd.append('file', file);
     try {
         const r = await fetch(`${API}/documents`, { method: 'POST', body: fd });
         if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
@@ -300,10 +335,8 @@ async function upload(file) {
         pages = data.pages.map(p => ({
             index: p.index, width: p.width, height: p.height,
             hasTextLayer: p.has_text_layer,
-            ocrText: p.ocr_text || '',
-            ocrLines: p.lines || null,
-            translatedText: '',
-            source: p.has_text_layer ? 'text_layer' : null,
+            ocrText: p.ocr_text || '', ocrLines: p.lines || null,
+            translatedText: '', source: p.has_text_layer ? 'text_layer' : null,
         }));
         enterDocView(data.filename);
     } catch (e) { alert('Upload failed: ' + e.message); }
@@ -311,37 +344,33 @@ async function upload(file) {
 }
 
 function enterDocView(filename) {
-    // Show doc UI
-    $('board-hint').classList.add('hidden');
+    $('home-view').classList.add('hidden');
     $('canvas-wrap').classList.remove('hidden');
     $('btn-new').style.display = '';
     $('btn-boxes').style.display = '';
-    $('mode-bar').classList.remove('hidden');
-    $('translate-row').classList.remove('hidden');
     $('btn-run').disabled = false;
 
-    // PDF multi-page bar
-    if (pages.length > 1) {
-        $('pdf-bar').classList.remove('hidden');
-        buildPageThumbs();
-    } else {
-        $('pdf-bar').classList.add('hidden');
-    }
+    // Show active mode in right panel
+    const m = MODE_META[currentMode];
+    $('active-mode').classList.remove('hidden');
+    $('am-dot').className = 'am-dot c-' + m.color;
+    $('am-label').className = 'am-label c-' + m.color;
+    $('am-label').textContent = m.label + ' — ' + m.desc;
 
-    // Reset editor
+    if (pages.length > 1) { $('pdf-bar').classList.remove('hidden'); buildPageThumbs(); }
+    else $('pdf-bar').classList.add('hidden');
+
     $('editor-empty').classList.remove('hidden');
     $('editor-area').classList.add('hidden');
     $('btn-download').style.display = 'none';
     resultBlob = null;
-
     selPage(0);
     status(`Loaded ${pages.length} page(s) — ${filename}`);
 }
 
-// ═══ Page navigation ═══
+// ═══ Pages ═══
 function buildPageThumbs() {
-    const c = $('pg-thumbs');
-    c.innerHTML = '';
+    const c = $('pg-thumbs'); c.innerHTML = '';
     pages.forEach((p, i) => {
         const d = document.createElement('div');
         d.className = 'pg-th' + (i === 0 ? ' active' : '');
@@ -350,78 +379,49 @@ function buildPageThumbs() {
         c.appendChild(d);
     });
 }
-
 function selPage(idx) {
     curPage = idx;
-    const p = pages[idx];
     $('pimg').src = `${API}/documents/${docId}/pages/${idx}/image`;
     $('pimg').onload = () => renderBoxes();
-
-    // Update nav
-    $('pg-label').textContent = `${idx + 1} / ${pages.length}`;
-    document.querySelectorAll('.pg-th').forEach((el, i) => el.classList.toggle('active', i === idx));
-    status(`Page ${idx + 1} of ${pages.length}` + (p.hasTextLayer ? ' (has text layer)' : ''));
+    $('pg-label').textContent = `${idx+1} / ${pages.length}`;
+    document.querySelectorAll('.pg-th').forEach((el,i) => el.classList.toggle('active', i===idx));
+    const p = pages[idx];
+    status(`Page ${idx+1}/${pages.length}` + (p.hasTextLayer ? ' (text layer detected)' : ''));
 }
+function navPage(d) { const n = curPage+d; if (n>=0 && n<pages.length) selPage(n); }
 
-function navPage(d) {
-    const next = curPage + d;
-    if (next >= 0 && next < pages.length) selPage(next);
-}
-
-// ═══ Mode selector ═══
-function setMode(el) {
-    document.querySelectorAll('.mode-chip').forEach(c => c.classList.remove('active'));
-    el.classList.add('active');
-    currentMode = el.dataset.mode;
-}
-
-// ═══ Run action ═══
+// ═══ Run ═══
 async function runAction() {
     if (!docId) return;
-    const doTranslate = $('tgl-translate').checked;
-    const mode = currentMode;
-
     $('btn-run').disabled = true;
     $('btn-download').style.display = 'none';
     resultBlob = null;
-
     try {
-        // Step 1: OCR all pages
         await ocrAllPages();
+        if (currentMode === 'translate') await translateAllPages();
 
-        // Step 2: Translate if toggled on
-        if (doTranslate) {
-            await translateAllPages();
-        }
-
-        // Step 3: Output
-        if (mode === 'markdown') {
-            buildMarkdown(doTranslate);
+        if (currentMode === 'extract') {
+            buildMarkdown(false);
+        } else if (currentMode === 'replace') {
+            await exportPDF('visible', 'ocr');
         } else {
-            const overlayMode = mode === 'searchable' ? 'invisible' : 'visible';
-            const source = doTranslate ? 'translated' : 'ocr';
-            await exportPDF(overlayMode, source);
+            await exportPDF('visible', 'translated');
         }
-    } catch (e) {
-        alert('Error: ' + e.message);
-    }
+    } catch (e) { alert('Error: ' + e.message); }
     $('btn-run').disabled = false;
 }
 
 async function ocrAllPages() {
     progress(true);
     for (let i = 0; i < pages.length; i++) {
-        setProg((i / pages.length) * 100);
+        setProg((i/pages.length)*100);
         const p = pages[i];
         if (p.ocrText && p.ocrLines) continue;
-
-        loading(true, `OCR page ${i + 1}/${pages.length}...`);
-        const r = await fetch(`${API}/documents/${docId}/ocr/${i}`, { method: 'POST' });
-        if (!r.ok) throw new Error(`OCR page ${i + 1} failed`);
+        loading(true, `OCR page ${i+1}/${pages.length}...`);
+        const r = await fetch(`${API}/documents/${docId}/ocr/${i}`, { method:'POST' });
+        if (!r.ok) throw new Error(`OCR page ${i+1} failed`);
         const data = await r.json();
-        p.ocrText = data.text;
-        p.ocrLines = data.lines;
-        p.source = data.source;
+        p.ocrText = data.text; p.ocrLines = data.lines; p.source = data.source;
     }
     setProg(100);
     setTimeout(() => progress(false), 300);
@@ -434,28 +434,24 @@ async function translateAllPages() {
     for (let i = 0; i < pages.length; i++) {
         const p = pages[i];
         if (!p.ocrText) continue;
-        loading(true, `Translating page ${i + 1}/${pages.length}...`);
+        loading(true, `Translating page ${i+1}/${pages.length}...`);
         const fd = new FormData();
-        fd.append('text', p.ocrText);
-        fd.append('target_lang', lang);
-        const r = await fetch(`${API}/documents/${docId}/translate/${i}`, { method: 'POST', body: fd });
-        if (!r.ok) throw new Error(`Translation page ${i + 1} failed`);
-        const data = await r.json();
-        p.translatedText = data.translated_text;
+        fd.append('text', p.ocrText); fd.append('target_lang', lang);
+        const r = await fetch(`${API}/documents/${docId}/translate/${i}`, { method:'POST', body:fd });
+        if (!r.ok) throw new Error(`Translation page ${i+1} failed`);
+        p.translatedText = (await r.json()).translated_text;
     }
-    loading(false);
-    renderBoxes();
+    loading(false); renderBoxes();
 }
 
 function buildMarkdown(translated) {
-    const text = pages.map((p, i) => {
+    const text = pages.map((p,i) => {
         const t = translated && p.translatedText ? p.translatedText : p.ocrText;
         if (!t) return '';
-        return pages.length > 1 ? `## Page ${i + 1}\n\n${t}` : t;
+        return pages.length > 1 ? `## Page ${i+1}\n\n${t}` : t;
     }).filter(Boolean).join('\n\n---\n\n');
-
-    resultBlob = new Blob([text], { type: 'text/markdown' });
-    showEditor(text, 'OCR Result');
+    resultBlob = new Blob([text], { type:'text/markdown' });
+    showEditor(text, 'Extracted Text');
     status('Markdown ready');
 }
 
@@ -463,30 +459,22 @@ async function exportPDF(overlayMode, source) {
     loading(true, 'Syncing data...');
     for (let i = 0; i < pages.length; i++) {
         const p = pages[i];
-        if (p.ocrText) {
-            const fd = new FormData(); fd.append('text', p.ocrText);
-            await fetch(`${API}/documents/${docId}/pages/${i}/set-ocr-text`, { method: 'POST', body: fd });
-        }
-        if (p.translatedText) {
-            const fd = new FormData(); fd.append('text', p.translatedText);
-            await fetch(`${API}/documents/${docId}/pages/${i}/set-translation`, { method: 'POST', body: fd });
-        }
+        if (p.ocrText) { const fd = new FormData(); fd.append('text', p.ocrText); await fetch(`${API}/documents/${docId}/pages/${i}/set-ocr-text`, {method:'POST',body:fd}); }
+        if (p.translatedText) { const fd = new FormData(); fd.append('text', p.translatedText); await fetch(`${API}/documents/${docId}/pages/${i}/set-translation`, {method:'POST',body:fd}); }
     }
-
     loading(true, 'Generating PDF...');
     const fd = new FormData();
-    fd.append('overlay_mode', overlayMode);
-    fd.append('export_source', source);
-    const r = await fetch(`${API}/documents/${docId}/export`, { method: 'POST', body: fd });
+    fd.append('overlay_mode', overlayMode); fd.append('export_source', source);
+    const r = await fetch(`${API}/documents/${docId}/export`, { method:'POST', body:fd });
     if (!r.ok) throw new Error('PDF export failed');
     resultBlob = await r.blob();
 
-    const allText = pages.map((p, i) => {
-        const t = source === 'translated' && p.translatedText ? p.translatedText : p.ocrText;
-        return t ? (pages.length > 1 ? `--- Page ${i + 1} ---\n${t}` : t) : '';
+    const allText = pages.map((p,i) => {
+        const t = source==='translated' && p.translatedText ? p.translatedText : p.ocrText;
+        return t ? (pages.length>1 ? `--- Page ${i+1} ---\n${t}` : t) : '';
     }).filter(Boolean).join('\n\n');
 
-    showEditor(allText, source === 'translated' ? 'Translated' : 'OCR Result');
+    showEditor(allText, source==='translated' ? 'Translated Text' : 'OCR Text');
     loading(false);
     status('PDF ready');
     downloadResult();
@@ -497,61 +485,53 @@ function showEditor(text, title) {
     $('editor-empty').classList.add('hidden');
     $('editor-area').classList.remove('hidden');
     $('rtxt').value = text;
-    $('rh-title').textContent = title || 'Editor';
+    $('rh-title').textContent = title || 'Output';
     $('btn-download').style.display = '';
     $('footer-info').textContent = `${text.split('\n').length} lines`;
 }
-
 function copyResult() {
-    const ta = $('rtxt');
-    ta.select();
-    navigator.clipboard.writeText(ta.value).then(() => status('Copied to clipboard'));
+    $('rtxt').select();
+    navigator.clipboard.writeText($('rtxt').value).then(() => status('Copied to clipboard'));
 }
-
 function downloadResult() {
     if (!resultBlob) return;
     const ext = resultBlob.type === 'text/markdown' ? 'md' : 'pdf';
     const name = `ocr_studio_${docId}.${ext}`;
     const url = URL.createObjectURL(resultBlob);
-    const a = document.createElement('a');
-    a.href = url; a.download = name; a.click();
+    const a = document.createElement('a'); a.href = url; a.download = name; a.click();
     URL.revokeObjectURL(url);
     status(`Downloaded ${name}`);
 }
 
 // ═══ Overlays ═══
 function renderBoxes() {
-    const c = $('olay');
-    c.innerHTML = '';
+    const c = $('olay'); c.innerHTML = '';
     const p = pages[curPage];
     if (!p || !p.ocrLines || !p.ocrLines.length) return;
     const img = $('pimg');
-    const sx = img.clientWidth / p.width;
-    const sy = img.clientHeight / p.height;
+    const sx = img.clientWidth/p.width, sy = img.clientHeight/p.height;
     p.ocrLines.forEach(ln => {
         const b = ln.bbox;
-        if (!b || (b.x1 <= b.x0 && b.y1 <= b.y0)) return;
+        if (!b || (b.x1<=b.x0 && b.y1<=b.y0)) return;
         const d = document.createElement('div');
         let cls = 'obox';
         if (p.translatedText) cls += ' tr';
         else if (p.source === 'text_layer') cls += ' pymupdf';
         d.className = cls;
-        d.style.left = (b.x0 * sx) + 'px'; d.style.top = (b.y0 * sy) + 'px';
-        d.style.width = ((b.x1 - b.x0) * sx) + 'px'; d.style.height = ((b.y1 - b.y0) * sy) + 'px';
+        d.style.left=(b.x0*sx)+'px'; d.style.top=(b.y0*sy)+'px';
+        d.style.width=((b.x1-b.x0)*sx)+'px'; d.style.height=((b.y1-b.y0)*sy)+'px';
         c.appendChild(d);
     });
 }
-
 function toggleBoxes() { $('board').classList.toggle('hide-boxes'); }
 
 // ═══ Reset ═══
 function resetAll() {
     docId = null; pages = []; curPage = -1; resultBlob = null;
-    $('board-hint').classList.remove('hidden');
+    $('home-view').classList.remove('hidden');
     $('canvas-wrap').classList.add('hidden');
     $('pdf-bar').classList.add('hidden');
-    $('mode-bar').classList.add('hidden');
-    $('translate-row').classList.add('hidden');
+    $('active-mode').classList.add('hidden');
     $('editor-empty').classList.remove('hidden');
     $('editor-area').classList.add('hidden');
     $('btn-new').style.display = 'none';
@@ -559,14 +539,14 @@ function resetAll() {
     $('btn-download').style.display = 'none';
     $('btn-run').disabled = true;
     $('footer-info').textContent = '';
-    status('Ready — paste an image or drag a file');
+    status('Pick a mode and upload a file to get started');
 }
 
 // ═══ Helpers ═══
 function status(t) { $('stext').textContent = t; }
-function loading(on, t) { const o = $('lov'); if (on) { o.classList.add('on'); if (t) $('ltxt').textContent = t; } else o.classList.remove('on'); }
-function progress(on) { $('pbarw').classList.toggle('on', on); if (!on) $('pbar').style.width = '0'; }
-function setProg(v) { $('pbar').style.width = v + '%'; }
+function loading(on, t) { const o=$('lov'); if(on){o.classList.add('on'); if(t) $('ltxt').textContent=t;} else o.classList.remove('on'); }
+function progress(on) { $('pbarw').classList.toggle('on',on); if(!on) $('pbar').style.width='0'; }
+function setProg(v) { $('pbar').style.width = v+'%'; }
 </script>
 </body>
 </html>
