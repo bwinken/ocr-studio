@@ -1,4 +1,4 @@
-# Image Doc Translator
+# OCR Studio
 
 OCR studio for scanned PDFs with translation and searchable PDF export. All AI inference runs via external VLM/LLM APIs (vLLM) — zero local ML dependencies.
 
@@ -73,14 +73,14 @@ All prompts are also configurable via `VLM_DET_PROMPT`, `VLM_OCR_PROMPT`, `VLM_C
 
 ## Deployment
 
-Deploy to `$HOME/opt/image-doc-translator` with systemd user service:
+Deploy to `$HOME/opt/ocr-studio` with systemd user service:
 
 ```bash
 # First-time install: copy files, create venv, install service
 make install
 
 # Edit config on server
-vim ~/opt/image-doc-translator/.env
+vim ~/opt/ocr-studio/.env
 
 # Start
 make start
@@ -97,7 +97,7 @@ make uninstall # remove service
 ```
 
 The deploy script (`deploy/deploy.sh`) does:
-1. `rsync` project to `$HOME/opt/image-doc-translator/` (excludes `.venv`, `.env`, `storage/`)
+1. `rsync` project to `$HOME/opt/ocr-studio/` (excludes `.venv`, `.env`, `storage/`)
 2. `uv pip install -e .` in the deploy directory
 3. Installs/reloads a `systemd --user` service
 4. `.env` is preserved across syncs (never overwritten)

@@ -11,7 +11,7 @@
 # ──────────────────────────────────────────────────
 set -euo pipefail
 
-APP_NAME="image-doc-translator"
+APP_NAME="ocr-studio"
 DEPLOY_DIR="$HOME/opt/$APP_NAME"
 SERVICE_NAME="$APP_NAME"
 SERVICE_FILE="$HOME/.config/systemd/user/${SERVICE_NAME}.service"

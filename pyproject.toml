@@ -1,5 +1,5 @@
 [project]
-name = "image-doc-translator"
+name = "ocr-studio"
 version = "0.1.0"
 description = "OCR studio for scanned PDFs with translation and searchable PDF export."
 requires-python = ">=3.11"
