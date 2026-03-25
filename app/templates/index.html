@@ -6,7 +6,7 @@
     <title>OCR Studio</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23202020%22/><text x=%2250%22 y=%2268%22 font-size=%2250%22 text-anchor=%22middle%22 fill=%22%23f97316%22>T</text></svg>">
     <style>
-        :root { --c:#f97316; --ch:#ea580c; --bg:#1a1a1a; --bg2:#222; --bg3:#2a2a2a; --bd:#333; --t:#d4d4d4; --td:#777; --ok:#22c55e; }
+        :root { --c:#f97316; --ch:#ea580c; --bg:#1a1a1a; --bg2:#222; --bg3:#2a2a2a; --bd:#333; --t:#d4d4d4; --td:#777; --ok:#22c55e; --blue:#3b82f6; }
         *{margin:0;padding:0;box-sizing:border-box}
         body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--t);height:100vh;display:flex;flex-direction:column;overflow:hidden}
 
@@ -15,12 +15,12 @@
         .hdr-r{display:flex;gap:6px;align-items:center}
         .btn{background:#3c3c3c;border:1px solid transparent;color:#ccc;padding:5px 12px;border-radius:4px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;gap:5px;transition:all .15s;white-space:nowrap}
         .btn:hover{background:#505050;color:#fff}
-        .btn-p{background:var(--c);color:#fff;font-weight:600}.btn-p:hover{background:var(--ch)}
-        .btn-ok{background:var(--ok);color:#fff;font-weight:600}.btn-ok:hover{background:#16a34a}
         .btn:disabled{opacity:.4;cursor:not-allowed}
         select{background:#3c3c3c;color:#ccc;border:1px solid #555;padding:4px 8px;border-radius:4px;font-size:12px;outline:none}
 
         .app{display:flex;flex:1;overflow:hidden}
+
+        /* ── Thumbnails ── */
         .thumbs{width:110px;min-width:110px;background:var(--bg2);border-right:1px solid var(--bd);display:flex;flex-direction:column}
         .thumbs-hdr{padding:6px;font-size:10px;color:var(--td);text-align:center;border-bottom:1px solid var(--bd);font-weight:700;text-transform:uppercase;flex-shrink:0}
         .thumbs-list{flex:1;overflow-y:auto;padding:6px;display:flex;flex-direction:column;gap:5px}
@@ -30,66 +30,70 @@
         .th-lbl{position:absolute;bottom:0;left:0;right:0;text-align:center;font-size:9px;background:rgba(0,0,0,.7);padding:2px;color:#aaa}
         .th-dot{position:absolute;top:3px;right:3px;width:7px;height:7px;border-radius:50%;background:#555}
         .th-dot.done{background:var(--ok)}.th-dot.busy{background:var(--c);animation:pulse 1s infinite}
-        .th-dot.has-text{background:#3b82f6}
+        .th-dot.has-text{background:var(--blue)}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
+        /* ── Workspace ── */
         .ws{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative}
         .vp{flex:1;overflow:auto;display:flex;justify-content:center;align-items:flex-start;padding:20px;background-image:radial-gradient(#333 1px,transparent 1px);background-size:20px 20px;position:relative}
         .cw{position:relative;box-shadow:0 8px 30px rgba(0,0,0,.5);flex-shrink:0}
         .cw img{display:block;max-width:100%}
-
         .obox{position:absolute;border:1px solid rgba(249,115,22,.45);background:rgba(249,115,22,.08);pointer-events:none;transition:opacity .2s}
         .obox.tr{border-color:rgba(34,197,94,.5);background:rgba(34,197,94,.08)}
         .obox.pymupdf{border-color:rgba(59,130,246,.5);background:rgba(59,130,246,.08)}
         .hide-boxes .obox{opacity:0}
 
-        .hint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#555;text-align:center;pointer-events:none}
-        .hint svg{width:56px;height:56px;margin-bottom:10px;opacity:.4}
-        .hint .sub{font-size:11px;color:#444;margin-top:4px}
+        /* ── Upload Screen ── */
+        .upload-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:20px;padding:40px}
+        .upload-zone{width:100%;max-width:500px;border:2px dashed #444;border-radius:12px;padding:50px 30px;text-align:center;cursor:pointer;transition:all .2s}
+        .upload-zone:hover{border-color:var(--c);background:rgba(249,115,22,.05)}
+        .upload-zone.drag-on{border-color:var(--c);background:rgba(249,115,22,.1)}
+        .upload-zone svg{width:48px;height:48px;color:#555;margin-bottom:12px}
+        .upload-zone .uz-title{font-size:16px;color:var(--t);margin-bottom:4px}
+        .upload-zone .uz-sub{font-size:12px;color:var(--td)}
 
+        /* ── Action Panel (after upload) ── */
+        .action-panel{width:340px;min-width:280px;background:var(--bg2);border-left:1px solid var(--bd);display:flex;flex-direction:column;overflow:hidden}
+        .ap-header{padding:14px 16px;border-bottom:1px solid var(--bd);font-weight:700;font-size:13px;color:var(--t);display:flex;align-items:center;justify-content:space-between}
+        .ap-body{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+
+        .action-card{background:var(--bg3);border:1px solid var(--bd);border-radius:8px;padding:16px;cursor:pointer;transition:all .2s;position:relative}
+        .action-card:hover{border-color:var(--c);transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.3)}
+        .action-card.running{border-color:var(--c);opacity:.7;pointer-events:none}
+        .action-card.done{border-color:var(--ok)}
+        .ac-icon{font-size:24px;margin-bottom:8px}
+        .ac-title{font-size:14px;font-weight:700;color:var(--t);margin-bottom:4px}
+        .ac-desc{font-size:11px;color:var(--td);line-height:1.5}
+        .ac-badge{position:absolute;top:12px;right:12px;font-size:9px;padding:2px 8px;border-radius:10px;font-weight:700;text-transform:uppercase}
+        .ac-badge-fast{background:#1e3a5f;color:#60a5fa}
+        .ac-badge-ai{background:#3d1f00;color:var(--c)}
+
+        /* ── Language Selector ── */
+        .lang-row{display:flex;align-items:center;gap:8px;padding:12px 0;border-top:1px solid var(--bd)}
+        .lang-row label{font-size:11px;color:var(--td);font-weight:600;white-space:nowrap}
+        .lang-row select{flex:1;padding:6px 10px;font-size:13px;border-radius:6px}
+
+        /* ── Divider ── */
+        .divider{display:flex;align-items:center;gap:10px;color:var(--td);font-size:10px;font-weight:700;text-transform:uppercase}
+        .divider::before,.divider::after{content:'';flex:1;border-top:1px solid var(--bd)}
+
+        /* ── Result area ── */
+        .result-area{background:var(--bg3);border:1px solid var(--bd);border-radius:8px;overflow:hidden}
+        .ra-header{padding:8px 12px;background:rgba(255,255,255,.03);border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center}
+        .ra-title{font-size:11px;font-weight:700;color:var(--td);text-transform:uppercase}
+        .ra-body textarea{width:100%;min-height:140px;background:transparent;border:none;color:var(--t);padding:10px 12px;font-size:12px;font-family:Consolas,Monaco,monospace;resize:vertical;outline:none;line-height:1.6}
+
+        /* ── Loading / Progress ── */
         .lov{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:50}
         .lov.on{display:flex}
         .sp{width:26px;height:26px;border:3px solid rgba(255,255,255,.15);border-top-color:var(--c);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:10px}
         @keyframes spin{to{transform:rotate(360deg)}}
         .lt{font-size:13px;color:#ccc}
-
         .pbar-w{height:3px;background:var(--bd);overflow:hidden;display:none;flex-shrink:0}
         .pbar-w.on{display:block}
         .pbar{height:100%;background:var(--c);transition:width .3s;width:0}
 
-        .rpanel{width:370px;min-width:260px;background:var(--bg2);border-left:1px solid var(--bd);display:flex;flex-direction:column;overflow:hidden}
-        .tabs{display:flex;border-bottom:1px solid var(--bd);flex-shrink:0}
-        .tab{flex:1;padding:8px;text-align:center;font-size:11px;cursor:pointer;background:transparent;border:none;color:var(--td);font-weight:700;border-bottom:2px solid transparent;transition:all .15s}
-        .tab:hover{color:var(--t);background:#2a2a2a}
-        .tab.on{color:var(--c);border-bottom-color:var(--c)}
-        .pcontent{flex:1;overflow-y:auto;padding:12px}
-        .tpage{display:none}.tpage.on{display:block}
-
-        .stit{font-size:10px;color:var(--td);text-transform:uppercase;font-weight:700;margin-bottom:6px;margin-top:14px}
-        .stit:first-child{margin-top:0}
-
-        textarea.ot{width:100%;min-height:180px;background:var(--bg3);border:1px solid var(--bd);color:var(--t);padding:8px;border-radius:4px;font-size:12px;font-family:Consolas,Monaco,monospace;resize:vertical;outline:none;line-height:1.6}
-        textarea.ot:focus{border-color:var(--c)}
-        textarea.tt{width:100%;min-height:180px;background:#1a2a1a;border:1px solid #2a4a2a;color:#a5d6a7;padding:8px;border-radius:4px;font-size:12px;font-family:Consolas,Monaco,monospace;resize:vertical;outline:none;line-height:1.6}
-        textarea.tt:focus{border-color:var(--ok)}
-
-        .sg{margin-bottom:10px}
-        .sl{font-size:11px;color:var(--td);margin-bottom:3px;display:block;font-weight:600}
-        .si{width:100%;background:var(--bg3);border:1px solid var(--bd);color:var(--t);padding:5px 8px;border-radius:4px;font-size:12px;outline:none}
-        .si:focus{border-color:var(--c)}
-        textarea.si{min-height:50px;resize:vertical;font-family:inherit}
-
-        .row{display:flex;gap:6px;margin-top:8px}
-        .row .btn{flex:1;justify-content:center}
-
-        .badge{display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;margin-left:6px}
-        .badge-blue{background:#1e3a5f;color:#60a5fa}
-        .badge-orange{background:#3d2200;color:#fb923c}
-
-        .vr{width:5px;cursor:col-resize;background:var(--bg2);border-left:1px solid #111;border-right:1px solid #111;flex-shrink:0;transition:background .15s}
-        .vr:hover{background:var(--c)}
         .sbar{height:24px;background:var(--bg2);border-top:1px solid var(--bd);display:flex;align-items:center;padding:0 12px;font-size:11px;color:var(--td);justify-content:space-between;flex-shrink:0}
-        .drag-on{outline:2px dashed var(--c);outline-offset:-4px}
         .hidden{display:none!important}
     </style>
 </head>
@@ -100,30 +104,35 @@
         <svg width="22" height="22" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="var(--c)"/><text x="50" y="68" font-size="50" text-anchor="middle" fill="#fff" font-weight="bold" font-family="sans-serif">T</text></svg>
         OCR Studio
     </div>
-    <div class="hdr-r">
+    <div class="hdr-r" id="hdr-btns" style="display:none">
         <input type="file" id="fin" accept="application/pdf,image/*" multiple class="hidden">
-        <button class="btn" onclick="$('fin').click()">Open File</button>
-        <button class="btn btn-p" id="b-ocr" disabled onclick="ocrCurrent()">OCR Page</button>
-        <button class="btn" id="b-ocr-all" disabled onclick="ocrAll()">OCR All</button>
-        <button class="btn" id="b-trans" disabled onclick="translateCurrent()">Translate</button>
-        <button class="btn btn-ok" id="b-export" disabled onclick="exportPDF()">Export PDF</button>
+        <button class="btn" onclick="resetAndUpload()">New File</button>
+        <button class="btn" onclick="toggleBoxes()">Toggle Boxes</button>
     </div>
 </header>
 
-<div class="app">
+<!-- ═══ Upload Screen ═══ -->
+<div class="upload-screen" id="upload-screen">
+    <input type="file" id="fin0" accept="application/pdf,image/*" multiple class="hidden">
+    <div class="upload-zone" id="uzone" onclick="$('fin0').click()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <div class="uz-title">Upload PDF or Images</div>
+        <div class="uz-sub">Drag & Drop or click to browse</div>
+    </div>
+</div>
+
+<!-- ═══ Main App (hidden until upload) ═══ -->
+<div class="app hidden" id="main-app">
+    <!-- Thumbnails -->
     <div class="thumbs">
         <div class="thumbs-hdr">Pages</div>
         <div class="thumbs-list" id="tlist"></div>
     </div>
 
+    <!-- Canvas -->
     <div class="ws" id="ws">
         <div class="vp" id="vp">
-            <div class="hint" id="hint">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                <div>Upload PDF or Images</div>
-                <div class="sub">Drag & Drop or click "Open File"</div>
-            </div>
-            <div class="cw" id="cw" style="display:none">
+            <div class="cw" id="cw">
                 <img id="pimg">
                 <div id="olay"></div>
             </div>
@@ -135,83 +144,68 @@
         <div class="pbar-w" id="pbarw"><div class="pbar" id="pbar"></div></div>
     </div>
 
-    <div class="vr" id="vr"></div>
-
-    <div class="rpanel" id="rpanel">
-        <div class="tabs">
-            <button class="tab on" onclick="stab('t-ocr',this)">OCR Text</button>
-            <button class="tab" onclick="stab('t-trans',this)">Translation</button>
-            <button class="tab" onclick="stab('t-cfg',this)">Settings</button>
+    <!-- Action Panel -->
+    <div class="action-panel" id="apanel">
+        <div class="ap-header">
+            <span>What do you want to do?</span>
+            <span id="pg-info" style="font-size:11px;color:var(--td);font-weight:400"></span>
         </div>
-        <div class="pcontent">
-            <!-- OCR Tab -->
-            <div class="tpage on" id="t-ocr">
-                <div class="stit">
-                    Page <span id="plbl">-</span>
-                    <span class="badge badge-blue" id="src-badge" style="display:none">PDF TEXT</span>
-                    <span class="badge badge-orange" id="vlm-badge" style="display:none">VLM OCR</span>
-                </div>
-                <textarea class="ot" id="otxt" placeholder="Run OCR to extract text..."></textarea>
-                <div class="row">
-                    <button class="btn" onclick="copyEl('otxt')">Copy</button>
-                    <button class="btn" onclick="toggleBoxes()">Toggle Boxes</button>
-                </div>
-                <div class="stit">All Pages</div>
-                <textarea class="ot" id="oall" placeholder="OCR all pages for combined text..." style="min-height:100px;"></textarea>
-                <div class="row"><button class="btn" onclick="copyEl('oall')">Copy All</button></div>
+        <div class="ap-body">
+            <!-- Action Cards -->
+            <div class="action-card" id="ac-md" onclick="doAction('markdown')">
+                <span class="ac-badge ac-badge-fast">Fast</span>
+                <div class="ac-icon">&#128196;</div>
+                <div class="ac-title">OCR &rarr; Markdown</div>
+                <div class="ac-desc">Extract text from all pages and export as a Markdown (.md) file.</div>
             </div>
 
-            <!-- Translation Tab -->
-            <div class="tpage" id="t-trans">
-                <div class="stit">Source Text</div>
-                <textarea class="ot" id="tsrc" placeholder="OCR text appears here..." style="min-height:100px;"></textarea>
-                <div class="row" style="align-items:center">
-                    <select id="tlang" style="flex:1">
-                        <option value="English">English</option>
-                        <option value="Traditional Chinese">Traditional Chinese</option>
-                        <option value="Simplified Chinese">Simplified Chinese</option>
-                        <option value="Japanese">Japanese</option>
-                        <option value="Korean">Korean</option>
-                        <option value="German">German</option>
-                        <option value="French">French</option>
-                        <option value="Spanish">Spanish</option>
-                    </select>
-                    <button class="btn btn-p" onclick="translateCurrent()">Translate</button>
-                </div>
-                <div class="stit">Translated Text</div>
-                <textarea class="tt" id="tres" placeholder="Translation result..."></textarea>
-                <div class="row">
-                    <button class="btn" onclick="copyEl('tres')">Copy</button>
-                    <button class="btn" onclick="applyTrans()">Apply to Page</button>
-                </div>
+            <div class="action-card" id="ac-pdf" onclick="doAction('searchable')">
+                <span class="ac-badge ac-badge-fast">Fast</span>
+                <div class="ac-icon">&#128451;</div>
+                <div class="ac-title">OCR &rarr; Searchable PDF</div>
+                <div class="ac-desc">Add an invisible text layer to the PDF. Original images stay intact, but text becomes searchable and selectable.</div>
             </div>
 
-            <!-- Settings Tab -->
-            <div class="tpage" id="t-cfg">
-                <div class="stit">Export Settings</div>
-                <div class="sg">
-                    <label class="sl">Overlay Mode</label>
-                    <select class="si" id="c-ovm" style="padding:5px 8px">
-                        <option value="invisible">Invisible (Searchable PDF)</option>
-                        <option value="visible">Visible (Overlay on image)</option>
-                        <option value="replace">Replace (White bg + text)</option>
-                    </select>
-                </div>
-                <div class="sg">
-                    <label class="sl">Text Source for Export</label>
-                    <select class="si" id="c-src" style="padding:5px 8px">
-                        <option value="ocr">OCR Text (Original)</option>
-                        <option value="translated">Translated Text</option>
-                    </select>
-                </div>
+            <div class="action-card" id="ac-replace" onclick="doAction('replace')">
+                <div class="ac-icon">&#128221;</div>
+                <div class="ac-title">OCR &rarr; Replace Text in PDF</div>
+                <div class="ac-desc">OCR the document, then overlay recognized text on top of the original image positions.</div>
+            </div>
 
-                <div class="stit" style="margin-top:16px">Server Config (via .env)</div>
-                <div style="font-size:11px;color:var(--td);line-height:1.6;background:var(--bg3);padding:8px;border-radius:4px;">
-                    VLM endpoints, models, prompts, and API keys are configured via environment variables in <code>.env</code> file. See <code>.env.example</code> for all options.
-                    <br><br>
-                    <b>Detection + OCR:</b> <code>VLM_DET_*</code>, <code>VLM_OCR_*</code><br>
-                    <b>Combined mode:</b> <code>VLM_COMBINED_MODE=true</code><br>
-                    <b>Translation:</b> <code>VLM_TRANSLATE_*</code>
+            <div class="divider">+ Translation</div>
+
+            <div class="action-card" id="ac-translate" onclick="doAction('translate')">
+                <span class="ac-badge ac-badge-ai">AI</span>
+                <div class="ac-icon">&#127760;</div>
+                <div class="ac-title">OCR + Translate &rarr; PDF</div>
+                <div class="ac-desc">OCR all pages, translate the text, then overlay translated text at original positions. Export as PDF.</div>
+            </div>
+
+            <div class="lang-row">
+                <label>Translate to:</label>
+                <select id="tlang">
+                    <option value="English">English</option>
+                    <option value="Traditional Chinese">Traditional Chinese</option>
+                    <option value="Simplified Chinese">Simplified Chinese</option>
+                    <option value="Japanese">Japanese</option>
+                    <option value="Korean">Korean</option>
+                    <option value="German">German</option>
+                    <option value="French">French</option>
+                    <option value="Spanish">Spanish</option>
+                </select>
+            </div>
+
+            <!-- Result (shown after action completes) -->
+            <div class="result-area hidden" id="result-area">
+                <div class="ra-header">
+                    <span class="ra-title" id="ra-title">Result</span>
+                    <div style="display:flex;gap:4px;">
+                        <button class="btn" style="font-size:11px;padding:3px 8px" onclick="copyResult()">Copy</button>
+                        <button class="btn" style="font-size:11px;padding:3px 8px" onclick="downloadResult()">Download</button>
+                    </div>
+                </div>
+                <div class="ra-body">
+                    <textarea id="rtxt" readonly></textarea>
                 </div>
             </div>
         </div>
@@ -228,15 +222,24 @@ const $ = id => document.getElementById(id);
 const API = '/api';
 
 let docId = null;
-let pages = [];   // { index, width, height, hasTextLayer, ocrText, ocrLines, translatedText, source }
+let pages = [];
 let curPage = -1;
+let lastAction = null;
+let resultBlob = null;
 
-// ── File Upload ──
-$('fin').addEventListener('change', e => { if(e.target.files.length) upload(e.target.files[0]); });
-const vp = $('vp');
-vp.addEventListener('dragover', e => { e.preventDefault(); vp.classList.add('drag-on'); });
-vp.addEventListener('dragleave', () => vp.classList.remove('drag-on'));
-vp.addEventListener('drop', e => { e.preventDefault(); vp.classList.remove('drag-on'); if(e.dataTransfer.files.length) upload(e.dataTransfer.files[0]); });
+// ═══ Upload ═══
+const uz = $('uzone');
+const fin0 = $('fin0');
+const fin = $('fin');
+
+fin0.addEventListener('change', e => { if(e.target.files.length) upload(e.target.files[0]); });
+fin.addEventListener('change', e => { if(e.target.files.length) upload(e.target.files[0]); });
+
+uz.addEventListener('dragover', e => { e.preventDefault(); uz.classList.add('drag-on'); });
+uz.addEventListener('dragleave', () => uz.classList.remove('drag-on'));
+uz.addEventListener('drop', e => { e.preventDefault(); uz.classList.remove('drag-on'); if(e.dataTransfer.files.length) upload(e.dataTransfer.files[0]); });
+
+function resetAndUpload() { $('fin').click(); }
 
 async function upload(file) {
     loading(true, 'Uploading...');
@@ -248,20 +251,24 @@ async function upload(file) {
         const data = await r.json();
         docId = data.doc_id;
         pages = data.pages.map(p => ({
-            index: p.index,
-            width: p.width,
-            height: p.height,
+            index: p.index, width: p.width, height: p.height,
             hasTextLayer: p.has_text_layer,
             ocrText: p.ocr_text || '',
             ocrLines: p.lines || null,
             translatedText: '',
             source: p.has_text_layer ? 'text_layer' : null,
         }));
-        $('hint').classList.add('hidden');
-        $('cw').style.display = '';
+
+        // Switch to main view
+        $('upload-screen').classList.add('hidden');
+        $('main-app').classList.remove('hidden');
+        $('hdr-btns').style.display = '';
+        $('result-area').classList.add('hidden');
+        resultBlob = null;
+
         buildThumbs();
         selPage(0);
-        updBtns();
+        resetCards();
         status(`Loaded ${pages.length} page(s) - ${data.filename}`);
     } catch(e) { alert('Upload failed: ' + e.message); }
     loading(false);
@@ -284,138 +291,112 @@ function selPage(idx) {
     curPage = idx;
     const p = pages[idx];
     document.querySelectorAll('.th-item').forEach((el,i) => el.classList.toggle('active', i===idx));
-
     $('pimg').src = `${API}/documents/${docId}/pages/${idx}/image`;
     $('pimg').onload = () => renderBoxes();
-
-    $('otxt').value = p.ocrText || '';
-    $('tsrc').value = p.ocrText || '';
-    $('tres').value = p.translatedText || '';
-    $('plbl').textContent = `${idx+1}/${pages.length}`;
-
-    // Source badge
-    $('src-badge').style.display = p.source === 'text_layer' ? '' : 'none';
-    $('vlm-badge').style.display = p.source === 'vlm' ? '' : 'none';
-
-    updAll();
+    $('pg-info').textContent = `Page ${idx+1}/${pages.length}`;
     status(`Page ${idx+1} of ${pages.length}` + (p.hasTextLayer ? ' (has text layer)' : ''));
 }
 
-// ── OCR ──
-async function ocrCurrent() {
-    if(curPage < 0) return;
-    await runOcr(curPage);
-    selPage(curPage);
+// ═══ Actions ═══
+async function doAction(action) {
+    if(!docId) return;
+    lastAction = action;
+
+    const cards = ['ac-md','ac-pdf','ac-replace','ac-translate'];
+    cards.forEach(id => { $(id).classList.remove('done'); $(id).className = 'action-card'; });
+
+    const cardId = { markdown:'ac-md', searchable:'ac-pdf', replace:'ac-replace', translate:'ac-translate' }[action];
+    $(cardId).classList.add('running');
+    $('result-area').classList.add('hidden');
+    resultBlob = null;
+
+    try {
+        // Step 1: OCR all pages
+        await ocrAllPages();
+
+        // Step 2: Translate if needed
+        if(action === 'translate') {
+            await translateAllPages();
+        }
+
+        // Step 3: Export
+        if(action === 'markdown') {
+            await exportMarkdown();
+        } else {
+            const overlayMode = { searchable:'invisible', replace:'visible', translate:'visible' }[action];
+            const exportSource = action === 'translate' ? 'translated' : 'ocr';
+            await exportPDF(overlayMode, exportSource);
+        }
+
+        $(cardId).classList.remove('running');
+        $(cardId).classList.add('done');
+    } catch(e) {
+        alert('Error: ' + e.message);
+        $(cardId).classList.remove('running');
+    }
 }
 
-async function ocrAll() {
+async function ocrAllPages() {
     progress(true);
     for(let i = 0; i < pages.length; i++) {
         setProg((i / pages.length) * 100);
-        status(`OCR page ${i+1}/${pages.length}...`);
-        await runOcr(i);
+        const p = pages[i];
+        if(p.ocrText && p.ocrLines) { updateDot(i, 'done'); continue; }
+
+        updateDot(i, 'busy');
+        loading(true, `OCR page ${i+1}/${pages.length}...`);
+
+        const r = await fetch(`${API}/documents/${docId}/ocr/${i}`, { method:'POST' });
+        if(!r.ok) throw new Error(`OCR page ${i+1} failed`);
+        const data = await r.json();
+        p.ocrText = data.text;
+        p.ocrLines = data.lines;
+        p.source = data.source;
+        updateDot(i, 'done');
     }
     setProg(100);
-    setTimeout(() => progress(false), 500);
-    selPage(curPage);
-    status(`OCR complete - ${pages.length} pages`);
-}
-
-async function runOcr(idx) {
-    const dot = $(`td${idx}`);
-    if(dot) dot.className = 'th-dot busy';
-    loading(true, `OCR page ${idx+1}...`);
-
-    try {
-        const r = await fetch(`${API}/documents/${docId}/ocr/${idx}`, { method:'POST' });
-        if(!r.ok) throw new Error((await r.json()).detail || r.statusText);
-        const data = await r.json();
-        pages[idx].ocrText = data.text;
-        pages[idx].ocrLines = data.lines;
-        pages[idx].source = data.source;
-        if(dot) dot.className = 'th-dot done';
-    } catch(e) {
-        alert(`OCR page ${idx+1} failed: ${e.message}`);
-        if(dot) dot.className = 'th-dot';
-    }
+    setTimeout(() => progress(false), 300);
     loading(false);
+    selPage(curPage);
 }
 
-// ── Overlays ──
-function renderBoxes() {
-    const c = $('olay');
-    c.innerHTML = '';
-    const p = pages[curPage];
-    if(!p || !p.ocrLines || !p.ocrLines.length) return;
+async function translateAllPages() {
+    const lang = $('tlang').value;
+    for(let i = 0; i < pages.length; i++) {
+        const p = pages[i];
+        if(!p.ocrText) continue;
+        loading(true, `Translating page ${i+1}/${pages.length}...`);
 
-    const img = $('pimg');
-    const sx = img.clientWidth / p.width;
-    const sy = img.clientHeight / p.height;
-
-    p.ocrLines.forEach(ln => {
-        const b = ln.bbox;
-        if(!b || (b.x1 <= b.x0 && b.y1 <= b.y0)) return;
-        const d = document.createElement('div');
-        let cls = 'obox';
-        if(p.translatedText) cls += ' tr';
-        else if(p.source === 'text_layer') cls += ' pymupdf';
-        d.className = cls;
-        d.style.left = (b.x0 * sx) + 'px';
-        d.style.top = (b.y0 * sy) + 'px';
-        d.style.width = ((b.x1 - b.x0) * sx) + 'px';
-        d.style.height = ((b.y1 - b.y0) * sy) + 'px';
-        c.appendChild(d);
-    });
-}
-
-function toggleBoxes() { $('vp').classList.toggle('hide-boxes'); }
-
-// ── Translation ──
-async function translateCurrent() {
-    const p = pages[curPage];
-    if(!p) return;
-    const src = $('tsrc').value.trim() || p.ocrText;
-    if(!src) return alert('No text to translate. Run OCR first.');
-
-    stab('t-trans', document.querySelectorAll('.tab')[1]);
-    loading(true, 'Translating...');
-
-    const fd = new FormData();
-    fd.append('text', src);
-    fd.append('target_lang', $('tlang').value);
-
-    try {
-        const r = await fetch(`${API}/documents/${docId}/translate/${curPage}`, { method:'POST', body:fd });
-        if(!r.ok) throw new Error((await r.json()).detail || r.statusText);
+        const fd = new FormData();
+        fd.append('text', p.ocrText);
+        fd.append('target_lang', lang);
+        const r = await fetch(`${API}/documents/${docId}/translate/${i}`, { method:'POST', body:fd });
+        if(!r.ok) throw new Error(`Translation page ${i+1} failed`);
         const data = await r.json();
         p.translatedText = data.translated_text;
-        $('tres').value = data.translated_text;
-        renderBoxes();
-        status('Translation complete');
-    } catch(e) {
-        alert('Translation error: ' + e.message);
-        status('Translation failed');
     }
     loading(false);
-}
-
-function applyTrans() {
-    const p = pages[curPage];
-    if(!p) return;
-    p.translatedText = $('tres').value;
-    const fd = new FormData();
-    fd.append('text', p.translatedText);
-    fetch(`${API}/documents/${docId}/pages/${curPage}/set-translation`, { method:'POST', body:fd });
     renderBoxes();
-    status('Translation applied');
 }
 
-// ── Export ──
-async function exportPDF() {
-    if(!docId) return;
+async function exportMarkdown() {
+    loading(true, 'Generating Markdown...');
+    const text = pages.map((p, i) => {
+        if(!p.ocrText) return '';
+        return pages.length > 1 ? `## Page ${i+1}\n\n${p.ocrText}` : p.ocrText;
+    }).filter(Boolean).join('\n\n---\n\n');
+
+    resultBlob = new Blob([text], { type: 'text/markdown' });
+    $('rtxt').value = text;
+    $('ra-title').textContent = 'OCR Result (Markdown)';
+    $('result-area').classList.remove('hidden');
+    loading(false);
+    status('Markdown ready - click Download');
+}
+
+async function exportPDF(overlayMode, exportSource) {
     loading(true, 'Syncing data...');
 
-    // Sync edits to backend
     for(let i = 0; i < pages.length; i++) {
         const p = pages[i];
         if(p.ocrText) {
@@ -430,46 +411,89 @@ async function exportPDF() {
 
     loading(true, 'Generating PDF...');
     const fd = new FormData();
-    fd.append('overlay_mode', $('c-ovm').value);
-    fd.append('export_source', $('c-src').value);
+    fd.append('overlay_mode', overlayMode);
+    fd.append('export_source', exportSource);
 
-    try {
-        const r = await fetch(`${API}/documents/${docId}/export`, { method:'POST', body:fd });
-        if(!r.ok) throw new Error((await r.json()).detail || r.statusText);
-        const blob = await r.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = `translated_${docId}.pdf`; a.click();
-        URL.revokeObjectURL(url);
-        status('PDF exported');
-    } catch(e) { alert('Export error: ' + e.message); }
+    const r = await fetch(`${API}/documents/${docId}/export`, { method:'POST', body:fd });
+    if(!r.ok) throw new Error('PDF export failed');
+    resultBlob = await r.blob();
+
+    // Also show text in result area
+    const allText = pages.map((p, i) => {
+        const t = exportSource === 'translated' && p.translatedText ? p.translatedText : p.ocrText;
+        return t ? (pages.length > 1 ? `--- Page ${i+1} ---\n${t}` : t) : '';
+    }).filter(Boolean).join('\n\n');
+
+    $('rtxt').value = allText;
+    $('ra-title').textContent = exportSource === 'translated' ? 'Translated Text' : 'OCR Text';
+    $('result-area').classList.remove('hidden');
     loading(false);
+    status('PDF ready - click Download');
+
+    // Auto-download
+    downloadResult();
 }
 
-// ── UI ──
-function stab(id, btn) {
-    document.querySelectorAll('.tpage').forEach(p => p.classList.toggle('on', p.id === id));
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
-    if(btn) btn.classList.add('on');
+// ═══ Result Actions ═══
+function copyResult() {
+    $('rtxt').select();
+    document.execCommand('copy');
+    status('Copied to clipboard');
 }
-function copyEl(id) { const el = $(id); el.select(); document.execCommand('copy'); status('Copied'); }
-function updBtns() { const h = pages.length > 0; ['b-ocr','b-ocr-all','b-trans','b-export'].forEach(id => $(id).disabled = !h); }
-function updAll() {
-    $('oall').value = pages.map((p,i) => p.ocrText ? `--- Page ${i+1} ---\n${p.ocrText}` : '').filter(Boolean).join('\n\n');
+
+function downloadResult() {
+    if(!resultBlob) return;
+    const ext = resultBlob.type === 'text/markdown' ? 'md' : 'pdf';
+    const name = `ocr_studio_${docId}.${ext}`;
+    const url = URL.createObjectURL(resultBlob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name; a.click();
+    URL.revokeObjectURL(url);
+    status(`Downloaded ${name}`);
 }
-$('otxt').addEventListener('input', e => {
-    if(curPage >= 0) { pages[curPage].ocrText = e.target.value; $('tsrc').value = e.target.value; updAll(); }
-});
+
+// ═══ Overlays ═══
+function renderBoxes() {
+    const c = $('olay');
+    c.innerHTML = '';
+    const p = pages[curPage];
+    if(!p || !p.ocrLines || !p.ocrLines.length) return;
+    const img = $('pimg');
+    const sx = img.clientWidth / p.width;
+    const sy = img.clientHeight / p.height;
+    p.ocrLines.forEach(ln => {
+        const b = ln.bbox;
+        if(!b || (b.x1 <= b.x0 && b.y1 <= b.y0)) return;
+        const d = document.createElement('div');
+        let cls = 'obox';
+        if(p.translatedText) cls += ' tr';
+        else if(p.source === 'text_layer') cls += ' pymupdf';
+        d.className = cls;
+        d.style.left = (b.x0*sx)+'px'; d.style.top = (b.y0*sy)+'px';
+        d.style.width = ((b.x1-b.x0)*sx)+'px'; d.style.height = ((b.y1-b.y0)*sy)+'px';
+        c.appendChild(d);
+    });
+}
+
+function toggleBoxes() { $('vp').classList.toggle('hide-boxes'); }
+
+// ═══ Helpers ═══
+function resetCards() {
+    ['ac-md','ac-pdf','ac-replace','ac-translate'].forEach(id => {
+        $(id).classList.remove('done','running');
+        $(id).className = 'action-card';
+    });
+}
+
+function updateDot(i, state) {
+    const dot = $(`td${i}`);
+    if(dot) dot.className = 'th-dot ' + state;
+}
 
 function status(t) { $('stext').textContent = t; }
-function loading(on, t) { const o = $('lov'); if(on){ o.classList.add('on'); if(t) $('ltxt').textContent = t; } else o.classList.remove('on'); }
-function progress(on) { $('pbarw').classList.toggle('on', on); if(!on) $('pbar').style.width = '0'; }
-function setProg(v) { $('pbar').style.width = v + '%'; }
-
-// ── Resizer ──
-let resizing = false;
-$('vr').addEventListener('mousedown', e => { resizing = true; e.preventDefault(); document.body.style.cursor = 'col-resize'; });
-document.addEventListener('mousemove', e => { if(!resizing) return; const w = document.body.clientWidth - e.clientX; if(w > 200 && w < 600) $('rpanel').style.width = w + 'px'; });
-document.addEventListener('mouseup', () => { if(resizing){ resizing = false; document.body.style.cursor = ''; }});
+function loading(on, t) { const o=$('lov'); if(on){o.classList.add('on'); if(t) $('ltxt').textContent=t;} else o.classList.remove('on'); }
+function progress(on) { $('pbarw').classList.toggle('on',on); if(!on) $('pbar').style.width='0'; }
+function setProg(v) { $('pbar').style.width=v+'%'; }
 </script>
 </body>
 </html>
