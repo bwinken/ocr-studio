@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR Studio (Dual Model)</title>
+    
+    <!-- Favicon (Scanner Style - Orange) -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23202020%22/><path d=%22M30 30 L70 30 M30 50 L70 50 M30 70 L50 70%22 stroke=%22%23f97316%22 stroke-width=%228%22 stroke-linecap=%22round%22/></svg>">
+
+    <style>
+        /* --- Global Variables & Reset --- */
+        :root {
+            /* Updated to Orange Theme to match App Gallery */
+            --primary-color: #f97316; /* Orange 500 */
+            --primary-hover: #ea580c; /* Orange 600 */
+            --bg-dark: #1e1e1e;
+            --bg-panel: #252526;
+            --border-color: #333;
+            --text-main: #d4d4d4;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            overflow: hidden;
+        }
+
+        /* --- Header --- */
+        header {
+            background-color: var(--bg-panel);
+            padding: 0 15px;
+            height: 50px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            z-index: 100;
+            flex-shrink: 0;
+        }
+
+        .toolbar-left { display: flex; align-items: center; gap: 12px; }
+        
+        .brand { 
+            font-size: 1.1rem; 
+            font-weight: 700; 
+            margin-right: 10px; 
+            color: var(--primary-color); 
+            display: flex; 
+            align-items: center; 
+            gap: 8px;
+        }
+
+        .tool-group {
+            display: flex; align-items: center; gap: 4px;
+            background: #3c3c3c;
+            padding: 3px 6px;
+            border-radius: 4px;
+        }
+
+        .group-label {
+            font-size: 0.65rem; color: #aaa; text-transform: uppercase;
+            margin-right: 6px; margin-left: 4px; font-weight: 600; display: none;
+        }
+        @media (min-width: 1000px) { .group-label { display: block; } }
+
+        .btn {
+            background: transparent; border: 1px solid transparent; color: #ccc;
+            padding: 4px 8px; border-radius: 3px; cursor: pointer;
+            font-size: 13px; display: flex; align-items: center; gap: 6px;
+            transition: all 0.2s ease; height: 26px;
+            white-space: nowrap;
+        }
+        .btn:hover { background-color: #505050; color: white; }
+        .btn:active { transform: translateY(1px); }
+        /* Active state updated with orange tint */
+        .btn.active { background-color: rgba(249, 115, 22, 0.2); color: var(--primary-color); border: 1px solid var(--primary-color); }
+
+        .toolbar-right { display: flex; align-items: center; gap: 10px; }
+        select {
+            background-color: #3c3c3c; color: white; border: 1px solid #555;
+            padding: 4px 10px; border-radius: 3px; font-size: 13px; height: 30px; outline: none; cursor: pointer;
+        }
+        #file-import { display: none; }
+
+        /* --- Main Layout --- */
+        .main-layout {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+            flex-direction: row; 
+        }
+
+        /* Vertical Layout (Top-Bottom) */
+        .main-layout.vertical {
+            flex-direction: column; 
+        }
+
+        /* --- Source Pane (Image Input) --- */
+        .source-pane {
+            width: 50%; 
+            min-width: 200px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background: #2d2d2d;
+            position: relative;
+            border-right: 1px solid var(--border-color);
+        }
+
+        .main-layout.vertical .source-pane {
+            width: 100% !important;
+            height: 50%; 
+            min-height: 150px;
+            border-right: none;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        /* --- Result Pane (Text Output) --- */
+        .result-pane {
+            flex: 1;
+            min-width: 200px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-dark);
+            position: relative;
+        }
+        
+        #editor-container { flex: 1; overflow: hidden; display: block; }
+
+        /* --- Resizer --- */
+        .resizer {
+            background-color: var(--bg-panel);
+            z-index: 10;
+            display: flex; align-items: center; justify-content: center;
+            transition: background-color 0.2s;
+        }
+        .resizer:hover, .resizer.dragging { background-color: var(--primary-color); }
+        
+        .main-layout:not(.vertical) .resizer { width: 6px; cursor: col-resize; height: 100%; border-left: 1px solid #000; border-right: 1px solid #000; }
+        .main-layout.vertical .resizer { height: 6px; width: 100%; cursor: row-resize; border-top: 1px solid #000; border-bottom: 1px solid #000; }
+
+        /* --- Image Wrapper --- */
+        .image-wrapper {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-image: radial-gradient(#444 1px, transparent 1px);
+            background-size: 20px 20px;
+            position: relative;
+            cursor: pointer; /* Click to upload */
+        }
+        .image-wrapper:hover {
+            background-image: radial-gradient(#555 1px, transparent 1px);
+        }
+        
+        #image-container {
+            max-width: 90%;
+            max-height: 90%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: grab;
+            transition: opacity 0.3s;
+        }
+        #image-container:active { cursor: grabbing; }
+
+        #target-image {
+            max-width: 100%;
+            max-height: 100%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border-radius: 4px;
+            display: none; /* Hidden by default until loaded */
+        }
+
+        .drop-message {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: #666;
+            text-align: center;
+            pointer-events: none;
+        }
+        .drop-message svg { width: 48px; height: 48px; margin-bottom: 10px; opacity: 0.5; }
+
+        /* --- AI Elements --- */
+        #ai-trigger-btn {
+            position: absolute; bottom: 25px; right: 25px; width: 42px; height: 42px;
+            border-radius: 50%; background: var(--primary-color);
+            color: white; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            cursor: pointer; z-index: 50; display: flex; align-items: center; justify-content: center;
+            font-size: 20px; transition: transform 0.2s, box-shadow 0.2s;
+        }
+        #ai-trigger-btn:hover { background: var(--primary-hover); transform: scale(1.05); }
+
+        /* Panels (AI & Settings) */
+        .popup-panel {
+            position: absolute; bottom: 80px; right: 25px; width: 320px;
+            background: var(--bg-panel); border-radius: 6px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5); z-index: 60; padding: 15px;
+            display: none; border: 1px solid #454545; color: #ccc;
+            animation: popUp 0.15s ease-out;
+        }
+        .popup-panel.visible { display: block; }
+        
+        #settings-panel {
+            top: 60px; bottom: auto; right: 15px; 
+            width: 360px; /* Slightly wider for better text editing */
+        }
+
+        @keyframes popUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .panel-title { font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
+        .panel-info { font-size: 0.75rem; color: #888; margin-bottom: 10px; }
+
+        .ai-textarea {
+            width: 100%; height: 80px; background: #3c3c3c; border: 1px solid #3c3c3c; color: #fff;
+            padding: 8px; border-radius: 2px; font-family: "Segoe UI", sans-serif; resize: vertical;
+            box-sizing: border-box; font-size: 13px; margin-bottom: 12px; outline: none;
+        }
+        .ai-textarea:focus { border-color: var(--primary-color); }
+
+        .setting-input {
+            width: 100%; background: #3c3c3c; border: 1px solid #3c3c3c; color: #fff;
+            padding: 6px 8px; border-radius: 2px; box-sizing: border-box; font-size: 13px; margin-bottom: 10px;
+            outline: none;
+        }
+        .setting-input:focus { border-color: var(--primary-color); }
+        .setting-label { font-size: 12px; color: #aaa; margin-bottom: 4px; display: block; font-weight: 600; }
+        
+        .panel-footer { display: flex; justify-content: flex-end; gap: 8px; }
+        .btn-submit { background: var(--primary-color); color: white; border: none; padding: 6px 14px; border-radius: 2px; cursor: pointer; font-size: 0.85rem; font-weight: bold; }
+        .btn-submit:hover { background: var(--primary-hover); }
+        .btn-cancel { background: transparent; color: #ccc; border: 1px solid #3c3c3c; padding: 6px 12px; border-radius: 2px; cursor: pointer; font-size: 0.85rem; }
+        .btn-cancel:hover { background: #3c3c3c; }
+
+        /* Loading Spinner & Overlay */
+        .loading-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 20;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+        .loading-overlay.active { display: flex; }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner {
+            display: inline-block; width: 24px; height: 24px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%; border-top-color: var(--primary-color);
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 15px;
+        }
+        .progress-text { font-size: 14px; color: #ddd; }
+
+        /* --- Info Panel --- */
+        .info-panel {
+            height: 30px; background: #252526; border-top: 1px solid #333;
+            display: flex; align-items: center; padding: 0 10px;
+            font-size: 12px; color: #aaa; flex-shrink: 0; justify-content: space-between;
+        }
+        .status-left { display: flex; gap: 15px; }
+        .status-active { color: var(--primary-color); }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="toolbar-left">
+        <div class="brand">
+            <!-- OCR Icon (Orange) -->
+            <svg width="20" height="20" viewBox="0 0 100 100" style="vertical-align: middle;">
+                <rect width="100" height="100" rx="20" fill="#f97316"/>
+                <path d="M30 35 L70 35 M30 50 L70 50 M30 65 L50 65" stroke="white" stroke-width="8" stroke-linecap="round"/>
+            </svg>
+            OCR Studio
+        </div>
+        
+        <!-- Simplified Tool Group: Image input is handled by drag/drop or clicking the area -->
+        <div class="tool-group">
+            <span class="group-label">Source</span>
+            <span style="font-size: 12px; color: #888; margin-right: 5px;">Drag & Drop or Click Area</span>
+            <input type="file" id="file-import" accept="image/*">
+        </div>
+
+        <div class="tool-group">
+            <span class="group-label">Output Format</span>
+            <select id="format-select">
+                <option value="Markdown" selected>Markdown</option>
+                <option value="Plain Text">Plain Text</option>
+                <option value="JSON">JSON</option>
+            </select>
+        </div>
+
+        <div class="tool-group">
+            <span class="group-label">Layout</span>
+            <button class="btn active" id="btn-layout-h" onclick="setLayout('horizontal')" title="Side by Side">◫</button>
+            <button class="btn" id="btn-layout-v" onclick="setLayout('vertical')" title="Top and Bottom">⊟</button>
+        </div>
+    </div>
+
+    <div class="toolbar-right">
+        <div class="tool-group">
+            <button class="btn" onclick="toggleSettings()" title="VLM Configuration">⚙️ Settings</button>
+        </div>
+        <div class="tool-group">
+            <button class="btn" onclick="copyText()" title="Copy to Clipboard">📋 Copy</button>
+            <button class="btn" onclick="downloadText()" title="Save as Text">💾 Save</button>
+        </div>
+    </div>
+</header>
+
+<!-- Settings Modal -->
+<div id="settings-panel" class="popup-panel">
+    <div class="panel-header">
+        <div class="panel-title">⚙️ Prompts Configuration</div>
+        <button class="btn-cancel" style="padding: 2px 6px;" onclick="toggleSettings()">✕</button>
+    </div>
+    
+    <label class="setting-label">OCR System Prompt</label>
+    <textarea id="cfg-system" class="setting-input" style="height: 100px; resize: vertical;">You are a professional OCR engine. Extract text from the image exactly as it appears. Do not translate or summarize. Maintain the layout if possible.</textarea>
+    
+    <label class="setting-label">AI Post-Process System Prompt</label>
+    <textarea id="cfg-pp-system" class="setting-input" style="height: 80px; resize: vertical; margin-bottom: 0;">You are a helpful text editing assistant. Fix errors, translate, or format the text as requested. Output ONLY the corrected text.</textarea>
+
+    <div class="panel-footer" style="margin-top: 15px;">
+        <button class="btn-submit" onclick="saveSettings()">Save & Close</button>
+    </div>
+</div>
+
+<!-- Default: Horizontal Layout -->
+<div class="main-layout" id="main-container">
+    
+    <!-- Left: Image Source -->
+    <div class="source-pane" id="source-pane">
+        <!-- Added onclick handler to trigger file import -->
+        <div class="image-wrapper" id="image-wrapper" onclick="triggerImport()">
+            <div class="drop-message" id="drop-message">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 8 12 3 7 8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <div>Drag & Drop Image Here<br>or Click Open</div>
+            </div>
+            <div id="image-container">
+                <img id="target-image" alt="Source" />
+            </div>
+        </div>
+        <div class="loading-overlay" id="loading-overlay">
+            <span class="spinner"></span>
+            <span class="progress-text" id="progress-text">Sending to VLM...</span>
+        </div>
+        
+        <!-- Info panel prevents click propagation to file import -->
+        <div class="info-panel" onclick="event.stopPropagation()" style="background: transparent; border-top: none; position: absolute; bottom: 0; width: 100%; box-sizing: border-box;">
+            <div class="status-left">
+                <span>Pan: Drag • Zoom: Wheel</span>
+            </div>
+            <div><button class="btn" onclick="resetZoom()" style="font-size: 11px; padding: 2px 6px;">Reset View</button></div>
+        </div>
+    </div>
+
+    <div class="resizer" id="resizer"></div>
+
+    <!-- Right: Text Result -->
+    <div class="result-pane" id="result-pane">
+        <div id="editor-container"></div>
+        
+        <button id="ai-trigger-btn" onclick="toggleAI()" title="AI Post-Process (Ctrl+K)">✨</button>
+
+        <!-- AI Polisher Panel -->
+        <div id="ai-panel" class="popup-panel">
+            <div class="panel-header">
+                <div class="panel-title">✨ AI Text Polisher</div>
+            </div>
+            <div class="panel-info">
+                Refine text, translate, or format result
+            </div>
+            <textarea id="ai-prompt" class="ai-textarea" placeholder="例如: 翻譯成英文, 轉成 JSON 格式..."></textarea>
+            <div class="panel-footer">
+                <button class="btn-cancel" onclick="toggleAI()">Cancel</button>
+                <button id="btn-ai-submit" class="btn-submit" onclick="submitToAI()">Process</button>
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <div class="status-left">
+                <span id="status-text">Ready</span>
+            </div>
+            <div id="word-count">0 chars</div>
+        </div>
+    </div>
+</div>
+
+<!-- ================= SCRIPTS ================= -->
+
+<!-- 1. Panzoom Library -->
+<script src="https://cdn.jsdelivr.net/npm/panzoom@9.4.0/dist/panzoom.min.js"></script>
+
+<!-- 2. App Logic -->
+<script type="module">
+    // ================= STATE & INIT =================
+    let panZoomInstance = null;
+    let editor = null;
+    
+    // ================= CONFIGURATION (Hardcoded) =================
+    
+    // 1. VLM Configuration (For OCR)
+    const vlmConfig = {
+        endpoint: "http://localhost:1234/v1/chat/completions",
+        apiKey: "sk-vlm-placeholder", 
+        model: "gpt-4o", 
+        systemPrompt: "You are a professional OCR engine. Extract text from the image exactly as it appears. Do not translate or summarize. Maintain the layout if possible."
+    };
+
+    // 2. Post-Process Configuration (For AI Polisher)
+    const postProcessConfig = {
+        endpoint: "http://localhost:1234/v1/chat/completions",
+        apiKey: "sk-pp-placeholder",
+        model: "gpt-4o-mini", // Different model for text processing
+        systemPrompt: "You are a helpful text editing assistant. Fix errors, translate, or format the text as requested. Output ONLY the corrected text."
+    };
+
+    // Load System Prompts from LocalStorage (Overrides hardcoded prompt)
+    const storedVLMSystemPrompt = localStorage.getItem('ocr_vlm_system_prompt');
+    if(storedVLMSystemPrompt) {
+        vlmConfig.systemPrompt = storedVLMSystemPrompt;
+    }
+
+    const storedPPSystemPrompt = localStorage.getItem('ocr_pp_system_prompt');
+    if(storedPPSystemPrompt) {
+        postProcessConfig.systemPrompt = storedPPSystemPrompt;
+    }
+
+    // Sync UI with Config
+    document.getElementById('cfg-system').value = vlmConfig.systemPrompt;
+    document.getElementById('cfg-pp-system').value = postProcessConfig.systemPrompt;
+
+    // ================= IMAGE HANDLING =================
+    const imgEl = document.getElementById('target-image');
+    const dropMsg = document.getElementById('drop-message');
+    const imageContainer = document.getElementById('image-container');
+
+    // Panzoom Init
+    panZoomInstance = panzoom(imageContainer, {
+        maxZoom: 10,
+        minZoom: 0.1,
+        zoomDoubleClickSpeed: 1,
+        // Prevent click events on container from triggering drag if panzoom handles it?
+        // Actually panzoom usually handles mousedown. We need to be careful with the onclick trigger.
+        // We handle this by checking if it was a drag or a click.
+    });
+
+    window.resetZoom = function() {
+        if (panZoomInstance) {
+            panZoomInstance.moveTo(0, 0);
+            panZoomInstance.zoomAbs(0, 0, 1);
+        }
+    }
+
+    // Drag & Drop
+    const wrapper = document.getElementById('source-pane');
+    wrapper.addEventListener('dragover', (e) => { e.preventDefault(); wrapper.style.background = '#333'; });
+    wrapper.addEventListener('dragleave', (e) => { e.preventDefault(); wrapper.style.background = '#2d2d2d'; });
+    wrapper.addEventListener('drop', (e) => {
+        e.preventDefault();
+        wrapper.style.background = '#2d2d2d';
+        if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+
+    // File Input
+    window.triggerImport = function() { document.getElementById('file-import').click(); };
+    document.getElementById('file-import').addEventListener('change', (e) => {
+        if (e.target.files.length) handleFile(e.target.files[0]);
+    });
+
+    function handleFile(file) {
+        if (!file.type.startsWith('image/')) return alert('Please upload an image file');
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            imgEl.src = e.target.result;
+            imgEl.style.display = 'block';
+            dropMsg.style.display = 'none';
+            resetZoom();
+            document.getElementById('status-text').textContent = "Image Loaded. Auto-starting OCR...";
+            
+            // Auto Trigger OCR
+            setTimeout(triggerOCR, 500); 
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // ================= SETTINGS LOGIC =================
+    const settingsPanel = document.getElementById('settings-panel');
+    window.toggleSettings = function() {
+        settingsPanel.classList.toggle('visible');
+    }
+    
+    window.saveSettings = function() {
+        // Save VLM Prompt
+        vlmConfig.systemPrompt = document.getElementById('cfg-system').value;
+        localStorage.setItem('ocr_vlm_system_prompt', vlmConfig.systemPrompt);
+        
+        // Save Post-Process Prompt
+        postProcessConfig.systemPrompt = document.getElementById('cfg-pp-system').value;
+        localStorage.setItem('ocr_pp_system_prompt', postProcessConfig.systemPrompt);
+
+        toggleSettings();
+        document.getElementById('status-text').textContent = "Settings Saved";
+        setTimeout(() => document.getElementById('status-text').textContent = "Ready", 2000);
+    }
+
+    // ================= OCR LOGIC (VLM) =================
+    const loadingOverlay = document.getElementById('loading-overlay');
+    const progressText = document.getElementById('progress-text');
+
+    window.triggerOCR = async function() {
+        if (imgEl.style.display === 'none' || !imgEl.src) return; // Silent return if auto-triggered empty
+
+        const formatText = document.getElementById('format-select').value;
+        
+        // UI State
+        loadingOverlay.classList.add('active');
+        progressText.textContent = `Processing with ${vlmConfig.model}...`;
+
+        try {
+            // Prepare Payload (OpenAI Vision Compatible)
+            const payload = {
+                model: vlmConfig.model,
+                messages: [
+                    {
+                        role: "system",
+                        content: vlmConfig.systemPrompt
+                    },
+                    {
+                        role: "user",
+                        content: [
+                            { 
+                                type: "text", 
+                                text: `Please extract text from this image.\nOutput Format: ${formatText}.\nReturn ONLY the extracted content without any preamble or markdown code blocks (unless the requested format is Markdown).` 
+                            },
+                            { 
+                                type: "image_url", 
+                                image_url: { 
+                                    url: imgEl.src // Contains base64 data
+                                } 
+                            }
+                        ]
+                    }
+                ],
+                max_tokens: 4096,
+                temperature: 0.1
+            };
+
+            const response = await fetch(vlmConfig.endpoint, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'Authorization': `Bearer ${vlmConfig.apiKey}` 
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`API Error ${response.status}: ${errText}`);
+            }
+            
+            const data = await response.json();
+            const resultText = data.choices?.[0]?.message?.content || "";
+            
+            // Set Result
+            if (editor) editor.setValue(resultText);
+            
+            document.getElementById('status-text').textContent = `OCR Complete`;
+            document.getElementById('status-text').classList.add('status-active');
+
+        } catch (err) {
+            console.error(err);
+            alert("VLM Error: " + err.message);
+            document.getElementById('status-text').textContent = "OCR Failed";
+        } finally {
+            loadingOverlay.classList.remove('active');
+        }
+    };
+
+    // ================= EXPORT LOGIC =================
+    window.copyText = function() {
+        if (!editor) return;
+        const text = editor.getValue();
+        
+        // Fallback for iframe restrictions
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        
+        try {
+            document.execCommand('copy');
+            const btn = document.querySelector('button[onclick="copyText()"]');
+            const original = btn.innerHTML;
+            btn.innerHTML = "✅ Copied";
+            setTimeout(() => btn.innerHTML = original, 2000);
+        } catch (err) {
+            console.error('Copy failed', err);
+            alert('Copy failed');
+        } finally {
+            document.body.removeChild(textarea);
+        }
+    };
+
+    window.downloadText = function() {
+        if (!editor) return;
+        const blob = new Blob([editor.getValue()], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'ocr-result-' + Date.now() + '.txt';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    };
+
+    // ================= LAYOUT LOGIC =================
+    const mainContainer = document.getElementById('main-container');
+    const sourcePane = document.getElementById('source-pane');
+    const resizer = document.getElementById('resizer');
+    let isVertical = false;
+    let isResizing = false;
+
+    window.setLayout = function(mode) {
+        const btnH = document.getElementById('btn-layout-h');
+        const btnV = document.getElementById('btn-layout-v');
+        sourcePane.style.width = ''; sourcePane.style.height = ''; 
+
+        if (mode === 'vertical') {
+            mainContainer.classList.add('vertical');
+            isVertical = true;
+            btnV.classList.add('active'); btnH.classList.remove('active');
+        } else {
+            mainContainer.classList.remove('vertical');
+            isVertical = false;
+            btnH.classList.add('active'); btnV.classList.remove('active');
+        }
+        setTimeout(() => {
+            if (editor) editor.layout();
+        }, 50);
+    };
+
+    resizer.addEventListener('mousedown', (e) => {
+        isResizing = true; resizer.classList.add('dragging');
+        document.body.style.cursor = isVertical ? 'row-resize' : 'col-resize';
+        e.preventDefault();
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+        const rect = mainContainer.getBoundingClientRect();
+        if (isVertical) {
+            let h = ((e.clientY - rect.top) / rect.height) * 100;
+            if(h < 10) h = 10; if(h > 90) h = 90;
+            sourcePane.style.height = h + '%';
+        } else {
+            let w = ((e.clientX - rect.left) / rect.width) * 100;
+            if(w < 10) w = 10; if(w > 90) w = 90;
+            sourcePane.style.width = w + '%';
+        }
+        requestAnimationFrame(() => {
+            if (editor) editor.layout();
+        });
+    });
+    
+    document.addEventListener('mouseup', () => {
+        if (isResizing) {
+            isResizing = false; resizer.classList.remove('dragging');
+            document.body.style.cursor = 'default';
+        }
+    });
+
+    // ================= AI POST-PROCESS LOGIC =================
+    const aiPanel = document.getElementById('ai-panel');
+    const statusText = document.getElementById('status-text');
+
+    window.toggleAI = function() {
+        aiPanel.classList.toggle('visible');
+        if (aiPanel.classList.contains('visible')) document.getElementById('ai-prompt').focus();
+    }
+
+    window.submitToAI = async function() {
+        const promptText = document.getElementById('ai-prompt').value;
+        const currentText = editor.getValue();
+        const btnSubmit = document.getElementById('btn-ai-submit');
+        
+        if (!promptText.trim()) return alert("請輸入指令");
+
+        const originalBtnText = btnSubmit.innerHTML;
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = '<span class="spinner" style="width:12px;height:12px;border-width:2px;margin:0;"></span>';
+        
+        statusText.textContent = `Processing with ${postProcessConfig.model}...`;
+        
+        const fullPrompt = `Original Text:\n${currentText}\n\nUser Instruction: ${promptText}`;
+
+        try {
+            // Using postProcessConfig here
+            const response = await fetch(postProcessConfig.endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${postProcessConfig.apiKey}` },
+                body: JSON.stringify({
+                    model: postProcessConfig.model,
+                    messages: [
+                        { role: "system", content: postProcessConfig.systemPrompt }, 
+                        { role: "user", content: fullPrompt }
+                    ],
+                    temperature: 0.3
+                })
+            });
+
+            if (!response.ok) throw new Error(`API Error: ${response.status}`);
+            const data = await response.json();
+            const result = data.choices?.[0]?.message?.content || "";
+
+            editor.setValue(result);
+            toggleAI();
+            statusText.textContent = "AI Update Complete";
+
+        } catch (error) {
+            alert("Error: " + error.message);
+            statusText.textContent = "AI Error";
+        } finally {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = originalBtnText;
+        }
+    }
+    
+    // Export editor to window for Monaco init to access
+    window.setEditor = (ed) => { editor = ed; };
+    window.updateWordCount = () => {
+        if(editor) {
+            document.getElementById('word-count').textContent = `${editor.getValue().length} chars`;
+        }
+    };
+</script>
+
+<!-- 3. Monaco Loader -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
+<script>
+    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' }});
+    require(['vs/editor/editor.main'], function() {
+        const editor = monaco.editor.create(document.getElementById('editor-container'), {
+            value: "1. Click or Drag & Drop an Image to auto-start OCR.\n2. Use 'Settings' to adjust system prompt.",
+            language: 'markdown', 
+            theme: 'vs-dark',
+            automaticLayout: false, 
+            minimap: { enabled: false },
+            fontSize: 14,
+            wordWrap: 'on',
+            lineNumbers: 'off'
+        });
+        
+        window.setEditor(editor);
+        
+        editor.onDidChangeModelContent(() => {
+            window.updateWordCount();
+        });
+        
+        window.addEventListener('resize', () => editor.layout());
+    });
+</script>
+
+</body>
+</html>
