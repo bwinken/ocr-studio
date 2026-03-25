@@ -21,61 +21,71 @@
 
         /* ── Left Panel ── */
         .left{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative}
-
         .board{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:auto;background-image:radial-gradient(#2a2a2a 1px,transparent 1px);background-size:20px 20px;position:relative;cursor:default;transition:background .2s}
         .board.drag-on{background-color:rgba(249,115,22,.06)}
 
-        /* ── Home: mode cards + upload ── */
-        .home-view{display:flex;flex-direction:column;align-items:center;gap:32px;padding:40px 30px;max-width:720px;width:100%}
-
+        /* ── Home view ── */
+        .home-view{display:flex;flex-direction:column;align-items:center;gap:28px;padding:36px 30px;max-width:640px;width:100%}
         .home-title{font-size:22px;font-weight:700;color:var(--t);text-align:center}
-        .home-sub{font-size:13px;color:var(--td);text-align:center;margin-top:-20px}
+        .home-sub{font-size:13px;color:var(--td);text-align:center;margin-top:-16px}
 
-        /* Mode cards */
-        .mode-cards{display:flex;gap:14px;width:100%}
-        .mode-card{flex:1;background:var(--bg3);border:2px solid var(--bd);border-radius:12px;padding:20px 16px;cursor:pointer;transition:all .2s;text-align:center;position:relative}
-        .mode-card:hover{border-color:#555;transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.4)}
-        .mode-card.selected{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.3)}
-        .mode-card.selected.m-extract{border-color:var(--blue);background:rgba(59,130,246,.08)}
-        .mode-card.selected.m-replace{border-color:var(--c);background:rgba(249,115,22,.08)}
-        .mode-card.selected.m-translate{border-color:var(--purple);background:rgba(168,85,247,.08)}
+        /* Pipeline builder */
+        .pipeline{display:flex;flex-direction:column;gap:0;width:100%}
 
-        .mc-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 12px}
-        .m-extract .mc-icon{background:rgba(59,130,246,.15);color:var(--blue)}
-        .m-replace .mc-icon{background:rgba(249,115,22,.15);color:var(--c)}
-        .m-translate .mc-icon{background:rgba(168,85,247,.15);color:var(--purple)}
+        /* Base step: Extract (always on) */
+        .pipe-step{display:flex;align-items:center;gap:14px;padding:16px 18px;background:var(--bg3);border:2px solid var(--bd);border-radius:12px;position:relative;transition:all .2s}
+        .pipe-step.always-on{border-color:var(--blue);background:rgba(59,130,246,.06)}
 
-        .mc-name{font-size:15px;font-weight:700;margin-bottom:6px}
-        .m-extract .mc-name{color:var(--blue)}
-        .m-replace .mc-name{color:var(--c)}
-        .m-translate .mc-name{color:var(--purple)}
+        .ps-num{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0}
+        .ps-num-1{background:var(--blue);color:#fff}
+        .ps-body{flex:1;min-width:0}
+        .ps-name{font-size:15px;font-weight:700;margin-bottom:2px}
+        .ps-name-blue{color:var(--blue)}
+        .ps-desc{font-size:11px;color:var(--td);line-height:1.5}
+        .ps-badge{font-size:9px;background:rgba(59,130,246,.2);color:var(--blue);padding:2px 8px;border-radius:10px;font-weight:700;text-transform:uppercase;margin-left:8px}
 
-        .mc-desc{font-size:11px;color:var(--td);line-height:1.6}
+        /* Connector arrow */
+        .pipe-conn{display:flex;align-items:center;justify-content:center;height:28px;position:relative}
+        .pipe-conn::before{content:'';position:absolute;left:50%;width:2px;height:100%;background:var(--bd);transform:translateX(-1px)}
+        .pipe-conn svg{position:relative;z-index:1;color:#555}
 
-        .mc-check{position:absolute;top:10px;right:10px;width:20px;height:20px;border-radius:50%;border:2px solid #444;display:flex;align-items:center;justify-content:center;transition:all .2s}
-        .mode-card.selected .mc-check{border-color:transparent}
-        .m-extract.selected .mc-check{background:var(--blue)}
-        .m-replace.selected .mc-check{background:var(--c)}
-        .m-translate.selected .mc-check{background:var(--purple)}
-        .mc-check::after{content:'';display:none;width:5px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg);margin-top:-1px}
-        .mode-card.selected .mc-check::after{display:block}
+        /* Add-on toggleable steps */
+        .pipe-addon{display:flex;align-items:center;gap:14px;padding:14px 18px;background:var(--bg3);border:2px solid var(--bd);border-radius:12px;cursor:pointer;transition:all .2s;user-select:none}
+        .pipe-addon:hover{border-color:#555;background:#2e2e2e}
+        .pipe-addon.on.addon-replace{border-color:var(--c);background:rgba(249,115,22,.06)}
+        .pipe-addon.on.addon-translate{border-color:var(--purple);background:rgba(168,85,247,.06)}
 
-        /* Language row under translate card */
-        .lang-pick{display:flex;align-items:center;gap:8px;margin-top:12px;justify-content:center}
-        .lang-pick label{font-size:11px;color:var(--td)}
-        .lang-pick select{background:#333;color:#ccc;border:1px solid #555;padding:4px 8px;border-radius:4px;font-size:12px;outline:none}
+        .pa-toggle{width:38px;height:22px;border-radius:11px;background:#3c3c3c;position:relative;flex-shrink:0;transition:background .2s}
+        .pa-toggle::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#888;transition:all .2s}
+        .pipe-addon.on .pa-toggle{background:var(--ok)}
+        .pipe-addon.on .pa-toggle::after{left:19px;background:#fff}
+
+        .pa-num{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;background:#3c3c3c;color:#888;transition:all .2s}
+        .pipe-addon.on.addon-replace .pa-num{background:var(--c);color:#fff}
+        .pipe-addon.on.addon-translate .pa-num{background:var(--purple);color:#fff}
+
+        .pa-body{flex:1;min-width:0}
+        .pa-name{font-size:15px;font-weight:700;color:#888;margin-bottom:2px;transition:color .2s}
+        .pipe-addon.on.addon-replace .pa-name{color:var(--c)}
+        .pipe-addon.on.addon-translate .pa-name{color:var(--purple)}
+        .pa-desc{font-size:11px;color:var(--td);line-height:1.5}
+
+        /* Language picker inside translate addon */
+        .pa-lang{display:flex;align-items:center;gap:8px;margin-top:8px}
+        .pa-lang label{font-size:11px;color:var(--td)}
+        .pa-lang select{background:#333;color:#ccc;border:1px solid #555;padding:4px 8px;border-radius:4px;font-size:12px;outline:none}
 
         /* Upload zone */
-        .upload-zone{width:100%;border:2px dashed #3a3a3a;border-radius:12px;padding:32px 20px;text-align:center;cursor:pointer;transition:all .2s}
+        .upload-zone{width:100%;border:2px dashed #3a3a3a;border-radius:12px;padding:28px 20px;text-align:center;cursor:pointer;transition:all .2s}
         .upload-zone:hover{border-color:var(--c);background:rgba(249,115,22,.04)}
         .upload-zone.drag-on{border-color:var(--c);background:rgba(249,115,22,.08)}
-        .uz-icon{display:flex;justify-content:center;margin-bottom:10px}
-        .uz-icon svg{width:36px;height:36px;color:#555}
+        .uz-icon{display:flex;justify-content:center;margin-bottom:8px}
+        .uz-icon svg{width:32px;height:32px;color:#555}
         .uz-title{font-size:14px;color:var(--t);font-weight:600;margin-bottom:4px}
         .uz-sub{font-size:11px;color:var(--td);line-height:1.7}
         .uz-sub kbd{background:#333;color:#aaa;padding:1px 5px;border-radius:3px;font-size:10px;font-family:inherit;border:1px solid #444}
 
-        /* ── Doc View (after upload) ── */
+        /* ── Doc View ── */
         .pdf-bar{height:36px;background:var(--bg2);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 10px;gap:8px;flex-shrink:0}
         .pg-nav{display:flex;align-items:center;gap:4px}
         .pg-btn{background:none;border:none;color:#999;cursor:pointer;font-size:16px;padding:2px 6px;border-radius:3px}
@@ -104,19 +114,20 @@
         .pbar-w.on{display:block}
         .pbar{height:100%;background:var(--c);transition:width .3s;width:0}
 
-        /* ── Right Panel (Editor) ── */
+        /* ── Right Panel ── */
         .right{width:420px;min-width:320px;max-width:50vw;background:var(--bg2);border-left:1px solid var(--bd);display:flex;flex-direction:column;overflow:hidden}
         .right-header{padding:10px 14px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
         .rh-title{font-size:13px;font-weight:700;color:var(--t)}
 
-        /* Active mode indicator in right panel */
-        .active-mode{padding:10px 14px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px;flex-shrink:0}
-        .am-dot{width:8px;height:8px;border-radius:50%}
-        .am-dot.c-blue{background:var(--blue)}.am-dot.c-orange{background:var(--c)}.am-dot.c-purple{background:var(--purple)}
-        .am-label{font-size:12px;font-weight:600}
-        .am-label.c-blue{color:var(--blue)}.am-label.c-orange{color:var(--c)}.am-label.c-purple{color:var(--purple)}
-        .am-change{margin-left:auto;font-size:11px;color:var(--td);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
-        .am-change:hover{color:var(--t)}
+        /* Pipeline summary in right panel */
+        .pipe-summary{padding:10px 14px;border-bottom:1px solid var(--bd);display:flex;flex-wrap:wrap;gap:6px;align-items:center;flex-shrink:0}
+        .ps-tag{font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px}
+        .ps-tag-extract{background:rgba(59,130,246,.15);color:var(--blue)}
+        .ps-tag-replace{background:rgba(249,115,22,.15);color:var(--c)}
+        .ps-tag-translate{background:rgba(168,85,247,.15);color:var(--purple)}
+        .ps-arrow{color:#555;font-size:11px}
+        .ps-change{margin-left:auto;font-size:11px;color:var(--td);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+        .ps-change:hover{color:var(--t)}
 
         .editor-body{flex:1;display:flex;flex-direction:column;overflow:hidden}
         .editor-area{flex:1;overflow:hidden;display:flex;flex-direction:column}
@@ -133,7 +144,6 @@
 
         .sbar{height:22px;background:var(--bg2);border-top:1px solid var(--bd);display:flex;align-items:center;padding:0 12px;font-size:10px;color:var(--td);justify-content:space-between;flex-shrink:0}
         .hidden{display:none!important}
-        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
     </style>
 </head>
 <body>
@@ -151,7 +161,6 @@
 </header>
 
 <div class="main">
-    <!-- ═══ Left Panel ═══ -->
     <div class="left">
         <div class="pdf-bar hidden" id="pdf-bar">
             <div class="pg-nav">
@@ -163,49 +172,64 @@
         </div>
 
         <div class="board" id="board">
-            <!-- ── Home view: mode selection + upload ── -->
+            <!-- ═══ Home: pipeline builder + upload ═══ -->
             <div class="home-view" id="home-view">
-                <div class="home-title">What would you like to do?</div>
-                <div class="home-sub">Pick a mode, then upload your document</div>
+                <div class="home-title">Build your pipeline</div>
+                <div class="home-sub">Extract is always on. Toggle add-ons as needed.</div>
 
-                <div class="mode-cards">
-                    <div class="mode-card m-extract selected" data-mode="extract" onclick="pickMode(this)">
-                        <div class="mc-check"></div>
-                        <div class="mc-icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                <div class="pipeline">
+                    <!-- Step 1: Extract (always on) -->
+                    <div class="pipe-step always-on">
+                        <div class="ps-num ps-num-1">1</div>
+                        <div class="ps-body">
+                            <div class="ps-name ps-name-blue">
+                                Extract
+                                <span class="ps-badge">always on</span>
+                            </div>
+                            <div class="ps-desc">OCR the document and extract all text with positions</div>
                         </div>
-                        <div class="mc-name">Extract</div>
-                        <div class="mc-desc">OCR the document and get the text as Markdown</div>
                     </div>
 
-                    <div class="mode-card m-replace" data-mode="replace" onclick="pickMode(this)">
-                        <div class="mc-check"></div>
-                        <div class="mc-icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-                        </div>
-                        <div class="mc-name">Replace</div>
-                        <div class="mc-desc">OCR and overlay recognized text back onto the document</div>
+                    <!-- Connector -->
+                    <div class="pipe-conn">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 2v8M3 7l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </div>
 
-                    <div class="mode-card m-translate" data-mode="translate" onclick="pickMode(this)">
-                        <div class="mc-check"></div>
-                        <div class="mc-icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                    <!-- Step 2: Replace (toggle) -->
+                    <div class="pipe-addon addon-replace" id="addon-replace" onclick="toggleAddon('replace')">
+                        <div class="pa-toggle"></div>
+                        <div class="pa-num">2</div>
+                        <div class="pa-body">
+                            <div class="pa-name">+ Replace</div>
+                            <div class="pa-desc">Overlay recognized text back onto the original document and export as PDF</div>
                         </div>
-                        <div class="mc-name">Translate</div>
-                        <div class="mc-desc">OCR, translate to another language, then export as PDF</div>
-                        <div class="lang-pick" id="lang-pick-home">
-                            <label>Target:</label>
-                            <select id="tlang" onclick="event.stopPropagation()">
-                                <option value="English">English</option>
-                                <option value="Traditional Chinese">繁體中文</option>
-                                <option value="Simplified Chinese">简体中文</option>
-                                <option value="Japanese">日本語</option>
-                                <option value="Korean">한국어</option>
-                                <option value="German">Deutsch</option>
-                                <option value="French">Français</option>
-                                <option value="Spanish">Español</option>
-                            </select>
+                    </div>
+
+                    <!-- Connector -->
+                    <div class="pipe-conn">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 2v8M3 7l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+
+                    <!-- Step 3: Translate (toggle) -->
+                    <div class="pipe-addon addon-translate" id="addon-translate" onclick="toggleAddon('translate')">
+                        <div class="pa-toggle"></div>
+                        <div class="pa-num">3</div>
+                        <div class="pa-body">
+                            <div class="pa-name">+ Translate</div>
+                            <div class="pa-desc">Translate extracted text to another language</div>
+                            <div class="pa-lang" onclick="event.stopPropagation()">
+                                <label>Target:</label>
+                                <select id="tlang">
+                                    <option value="English">English</option>
+                                    <option value="Traditional Chinese">繁體中文</option>
+                                    <option value="Simplified Chinese">简体中文</option>
+                                    <option value="Japanese">日本語</option>
+                                    <option value="Korean">한국어</option>
+                                    <option value="German">Deutsch</option>
+                                    <option value="French">Français</option>
+                                    <option value="Spanish">Español</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -221,7 +245,7 @@
                 </div>
             </div>
 
-            <!-- ── Canvas (shown after upload) ── -->
+            <!-- ═══ Canvas (after upload) ═══ -->
             <div class="canvas-wrap hidden" id="canvas-wrap">
                 <div class="cw" id="cw">
                     <img id="pimg">
@@ -237,27 +261,23 @@
         <div class="pbar-w" id="pbarw"><div class="pbar" id="pbar"></div></div>
     </div>
 
-    <!-- ═══ Right Panel (Editor) ═══ -->
+    <!-- ═══ Right Panel ═══ -->
     <div class="right">
         <div class="right-header">
             <span class="rh-title" id="rh-title">Output</span>
-            <div style="display:flex;gap:4px" id="editor-actions">
+            <div style="display:flex;gap:4px">
                 <button class="btn" style="font-size:11px;padding:3px 8px" onclick="copyResult()" title="Copy to clipboard">Copy</button>
             </div>
         </div>
 
-        <!-- Active mode indicator (shown after upload) -->
-        <div class="active-mode hidden" id="active-mode">
-            <div class="am-dot" id="am-dot"></div>
-            <span class="am-label" id="am-label"></span>
-            <span class="am-change" onclick="resetAll()">change</span>
-        </div>
+        <!-- Pipeline summary (shown after upload) -->
+        <div class="pipe-summary hidden" id="pipe-summary"></div>
 
         <div class="editor-body">
             <div class="editor-empty" id="editor-empty">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
                 <div class="ee-title">Output will appear here</div>
-                <div class="ee-sub">Pick a mode on the left, upload a file,<br>then click <b>Run</b> to start</div>
+                <div class="ee-sub">Configure your pipeline on the left,<br>upload a file, then click <b>Run</b></div>
             </div>
             <div class="editor-area hidden" id="editor-area">
                 <textarea id="rtxt" placeholder="Result will appear here..." readonly></textarea>
@@ -276,7 +296,7 @@
 </div>
 
 <div class="sbar">
-    <span id="stext">Pick a mode and upload a file to get started</span>
+    <span id="stext">Configure pipeline and upload a file to get started</span>
     <span id="sright"></span>
 </div>
 
@@ -284,19 +304,28 @@
 const $ = id => document.getElementById(id);
 const API = '/api';
 
-let docId = null, pages = [], curPage = -1, currentMode = 'extract', resultBlob = null;
+let docId = null, pages = [], curPage = -1, resultBlob = null;
+let optReplace = false, optTranslate = false;
 
-const MODE_META = {
-    extract:   { label: 'Extract',   color: 'blue',   desc: 'OCR → Markdown text' },
-    replace:   { label: 'Replace',   color: 'orange', desc: 'OCR → text overlay on document' },
-    translate: { label: 'Translate', color: 'purple', desc: 'OCR → translate → PDF' },
-};
+// ═══ Pipeline toggles ═══
+function toggleAddon(which) {
+    if (which === 'replace') {
+        optReplace = !optReplace;
+        $('addon-replace').classList.toggle('on', optReplace);
+    } else {
+        optTranslate = !optTranslate;
+        $('addon-translate').classList.toggle('on', optTranslate);
+    }
+}
 
-// ═══ Mode selection ═══
-function pickMode(el) {
-    document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
-    el.classList.add('selected');
-    currentMode = el.dataset.mode;
+function buildPipeSummary() {
+    const el = $('pipe-summary');
+    let html = '<span class="ps-tag ps-tag-extract">Extract</span>';
+    if (optReplace) html += '<span class="ps-arrow">→</span><span class="ps-tag ps-tag-replace">Replace</span>';
+    if (optTranslate) html += '<span class="ps-arrow">→</span><span class="ps-tag ps-tag-translate">Translate (' + $('tlang').value + ')</span>';
+    html += '<span class="ps-change" onclick="resetAll()">change</span>';
+    el.innerHTML = html;
+    el.classList.remove('hidden');
 }
 
 // ═══ Paste (Ctrl+V) ═══
@@ -320,7 +349,6 @@ board.addEventListener('drop', e => {
     e.preventDefault(); board.classList.remove('drag-on');
     if (e.dataTransfer.files.length) upload(e.dataTransfer.files[0]);
 });
-
 $('fin').addEventListener('change', e => { if (e.target.files.length) upload(e.target.files[0]); e.target.value = ''; });
 
 // ═══ Upload ═══
@@ -328,7 +356,7 @@ async function upload(file) {
     loading(true, 'Uploading...');
     const fd = new FormData(); fd.append('file', file);
     try {
-        const r = await fetch(`${API}/documents`, { method: 'POST', body: fd });
+        const r = await fetch(`${API}/documents`, { method:'POST', body:fd });
         if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
         const data = await r.json();
         docId = data.doc_id;
@@ -349,13 +377,7 @@ function enterDocView(filename) {
     $('btn-new').style.display = '';
     $('btn-boxes').style.display = '';
     $('btn-run').disabled = false;
-
-    // Show active mode in right panel
-    const m = MODE_META[currentMode];
-    $('active-mode').classList.remove('hidden');
-    $('am-dot').className = 'am-dot c-' + m.color;
-    $('am-label').className = 'am-label c-' + m.color;
-    $('am-label').textContent = m.label + ' — ' + m.desc;
+    buildPipeSummary();
 
     if (pages.length > 1) { $('pdf-bar').classList.remove('hidden'); buildPageThumbs(); }
     else $('pdf-bar').classList.add('hidden');
@@ -396,16 +418,22 @@ async function runAction() {
     $('btn-run').disabled = true;
     $('btn-download').style.display = 'none';
     resultBlob = null;
-    try {
-        await ocrAllPages();
-        if (currentMode === 'translate') await translateAllPages();
 
-        if (currentMode === 'extract') {
-            buildMarkdown(false);
-        } else if (currentMode === 'replace') {
-            await exportPDF('visible', 'ocr');
+    try {
+        // Always: OCR
+        await ocrAllPages();
+
+        // Optional: Translate
+        if (optTranslate) await translateAllPages();
+
+        // Output depends on flags
+        if (optReplace || optTranslate) {
+            // Any PDF output mode
+            const source = optTranslate ? 'translated' : 'ocr';
+            await exportPDF('visible', source);
         } else {
-            await exportPDF('visible', 'translated');
+            // Extract only → Markdown
+            buildMarkdown(false);
         }
     } catch (e) { alert('Error: ' + e.message); }
     $('btn-run').disabled = false;
@@ -414,7 +442,7 @@ async function runAction() {
 async function ocrAllPages() {
     progress(true);
     for (let i = 0; i < pages.length; i++) {
-        setProg((i/pages.length)*100);
+        setProg((i / pages.length) * 100);
         const p = pages[i];
         if (p.ocrText && p.ocrLines) continue;
         loading(true, `OCR page ${i+1}/${pages.length}...`);
@@ -445,7 +473,7 @@ async function translateAllPages() {
 }
 
 function buildMarkdown(translated) {
-    const text = pages.map((p,i) => {
+    const text = pages.map((p, i) => {
         const t = translated && p.translatedText ? p.translatedText : p.ocrText;
         if (!t) return '';
         return pages.length > 1 ? `## Page ${i+1}\n\n${t}` : t;
@@ -469,14 +497,13 @@ async function exportPDF(overlayMode, source) {
     if (!r.ok) throw new Error('PDF export failed');
     resultBlob = await r.blob();
 
-    const allText = pages.map((p,i) => {
-        const t = source==='translated' && p.translatedText ? p.translatedText : p.ocrText;
-        return t ? (pages.length>1 ? `--- Page ${i+1} ---\n${t}` : t) : '';
+    const allText = pages.map((p, i) => {
+        const t = source === 'translated' && p.translatedText ? p.translatedText : p.ocrText;
+        return t ? (pages.length > 1 ? `--- Page ${i+1} ---\n${t}` : t) : '';
     }).filter(Boolean).join('\n\n');
 
-    showEditor(allText, source==='translated' ? 'Translated Text' : 'OCR Text');
-    loading(false);
-    status('PDF ready');
+    showEditor(allText, source === 'translated' ? 'Translated Text' : 'OCR Text');
+    loading(false); status('PDF ready');
     downloadResult();
 }
 
@@ -499,8 +526,7 @@ function downloadResult() {
     const name = `ocr_studio_${docId}.${ext}`;
     const url = URL.createObjectURL(resultBlob);
     const a = document.createElement('a'); a.href = url; a.download = name; a.click();
-    URL.revokeObjectURL(url);
-    status(`Downloaded ${name}`);
+    URL.revokeObjectURL(url); status(`Downloaded ${name}`);
 }
 
 // ═══ Overlays ═══
@@ -509,17 +535,17 @@ function renderBoxes() {
     const p = pages[curPage];
     if (!p || !p.ocrLines || !p.ocrLines.length) return;
     const img = $('pimg');
-    const sx = img.clientWidth/p.width, sy = img.clientHeight/p.height;
+    const sx = img.clientWidth / p.width, sy = img.clientHeight / p.height;
     p.ocrLines.forEach(ln => {
         const b = ln.bbox;
-        if (!b || (b.x1<=b.x0 && b.y1<=b.y0)) return;
+        if (!b || (b.x1 <= b.x0 && b.y1 <= b.y0)) return;
         const d = document.createElement('div');
         let cls = 'obox';
         if (p.translatedText) cls += ' tr';
         else if (p.source === 'text_layer') cls += ' pymupdf';
         d.className = cls;
-        d.style.left=(b.x0*sx)+'px'; d.style.top=(b.y0*sy)+'px';
-        d.style.width=((b.x1-b.x0)*sx)+'px'; d.style.height=((b.y1-b.y0)*sy)+'px';
+        d.style.left = (b.x0*sx)+'px'; d.style.top = (b.y0*sy)+'px';
+        d.style.width = ((b.x1-b.x0)*sx)+'px'; d.style.height = ((b.y1-b.y0)*sy)+'px';
         c.appendChild(d);
     });
 }
@@ -531,7 +557,7 @@ function resetAll() {
     $('home-view').classList.remove('hidden');
     $('canvas-wrap').classList.add('hidden');
     $('pdf-bar').classList.add('hidden');
-    $('active-mode').classList.add('hidden');
+    $('pipe-summary').classList.add('hidden');
     $('editor-empty').classList.remove('hidden');
     $('editor-area').classList.add('hidden');
     $('btn-new').style.display = 'none';
@@ -539,13 +565,13 @@ function resetAll() {
     $('btn-download').style.display = 'none';
     $('btn-run').disabled = true;
     $('footer-info').textContent = '';
-    status('Pick a mode and upload a file to get started');
+    status('Configure pipeline and upload a file to get started');
 }
 
 // ═══ Helpers ═══
 function status(t) { $('stext').textContent = t; }
 function loading(on, t) { const o=$('lov'); if(on){o.classList.add('on'); if(t) $('ltxt').textContent=t;} else o.classList.remove('on'); }
-function progress(on) { $('pbarw').classList.toggle('on',on); if(!on) $('pbar').style.width='0'; }
+function progress(on) { $('pbarw').classList.toggle('on', on); if(!on) $('pbar').style.width='0'; }
 function setProg(v) { $('pbar').style.width = v+'%'; }
 </script>
 </body>
