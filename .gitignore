@@ -5,3 +5,11 @@ __pycache__/
 app/storage/
 *.egg-info/
 dist/
+build/dist/
+build/work/
+build/output/
+
+# Debug / test artifacts
+*.pdf
+*_bbox_debug.png
+debug_bbox.py
