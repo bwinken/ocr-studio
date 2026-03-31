@@ -1,6 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-import sys
 from pathlib import Path
 
 block_cipher = None
@@ -10,9 +9,7 @@ a = Analysis(
     [str(project_dir / 'src' / 'main.py')],
     pathex=[str(project_dir)],
     binaries=[],
-    datas=[
-        (str(project_dir / 'resources' / 'icons'), 'resources/icons'),
-    ],
+    datas=[],
     hiddenimports=[
         'PySide6.QtSvg',
         'src',
@@ -31,6 +28,8 @@ a = Analysis(
         'src.workers.batch_worker',
         'src.ui',
         'src.ui.main_window',
+        'src.ui.home_page',
+        'src.ui.setup_page',
         'src.ui.system_tray',
         'src.ui.capture_overlay',
         'src.ui.capture_result_widget',
@@ -45,6 +44,7 @@ a = Analysis(
         'src.ui.widgets.page_thumbnail_list',
         'src.ui.widgets.page_viewer',
         'src.ui.widgets.text_panel',
+        'src.ui.widgets.spinner',
         'src.utils',
         'src.utils.hotkey',
         'src.utils.single_instance',
@@ -71,7 +71,6 @@ exe = EXE(
     upx=True,
     console=False,
     disable_windowed_traceback=False,
-    icon=str(project_dir / 'resources' / 'icons' / 'app.ico') if (project_dir / 'resources' / 'icons' / 'app.ico').exists() else None,
 )
 
 coll = COLLECT(

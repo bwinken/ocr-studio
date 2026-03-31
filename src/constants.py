@@ -1,5 +1,5 @@
 APP_NAME = "OCR Studio"
-APP_VERSION = "1.0.0"
+APP_VERSION = "0.1.0"
 ORG_NAME = "OCRStudio"
 
 SUPPORTED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif", ".webp"}
