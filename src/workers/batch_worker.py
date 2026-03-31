@@ -1,7 +1,6 @@
 """Batch folder processing worker thread."""
 
 import tempfile
-import time
 from pathlib import Path
 
 from PySide6.QtCore import QThread, Signal
@@ -13,14 +12,16 @@ from src.services.openai_service import OpenAIService
 from src.services.pdf_service import PdfService
 
 
-class BatchWorker(QThread):
-    """Process all files in input folder, produce output in output folder."""
+class _Cancelled(Exception):
+    pass
 
-    file_started = Signal(str, int, int)       # (filename, current, total)
-    file_completed = Signal(str)               # filename
-    file_failed = Signal(str, str)             # (filename, error)
-    all_completed = Signal(int, int)           # (success_count, fail_count)
-    progress_detail = Signal(str)              # Detailed status
+
+class BatchWorker(QThread):
+    file_started = Signal(str, int, int)
+    file_completed = Signal(str)
+    file_failed = Signal(str, str)
+    all_completed = Signal(int, int)
+    progress_detail = Signal(str)
 
     def __init__(
         self,
@@ -33,6 +34,7 @@ class BatchWorker(QThread):
         overlay_mode: OverlayMode,
         export_source: ExportSource,
         do_translate: bool = True,
+        output_txt: bool = False,
     ):
         super().__init__()
         self._openai = openai_service
@@ -44,6 +46,11 @@ class BatchWorker(QThread):
         self._overlay_mode = overlay_mode
         self._export_source = export_source
         self._do_translate = do_translate
+        self._output_txt = output_txt
+
+    def _check_cancel(self):
+        if self.isInterruptionRequested():
+            raise _Cancelled()
 
     def run(self):
         files = self._collect_files()
@@ -65,6 +72,10 @@ class BatchWorker(QThread):
                 self._process_file(filepath)
                 self.file_completed.emit(filepath.name)
                 success += 1
+            except _Cancelled:
+                self.file_failed.emit(filepath.name, "已取消")
+                failed += 1
+                break
             except Exception as e:
                 self.file_failed.emit(filepath.name, str(e))
                 failed += 1
@@ -72,13 +83,11 @@ class BatchWorker(QThread):
         self.all_completed.emit(success, failed)
 
     def _collect_files(self) -> list[Path]:
-        """Find all supported files in input folder (recursive)."""
         all_exts = SUPPORTED_PDF_EXTENSIONS | SUPPORTED_IMAGE_EXTENSIONS
-        files = []
-        for p in sorted(self._input.rglob("*")):
-            if p.is_file() and p.suffix.lower() in all_exts:
-                files.append(p)
-        return files
+        return sorted(
+            p for p in self._input.rglob("*")
+            if p.is_file() and p.suffix.lower() in all_exts
+        )
 
     def _process_file(self, filepath: Path):
         suffix = filepath.suffix.lower()
@@ -90,8 +99,9 @@ class BatchWorker(QThread):
             self._process_image(filepath, work_dir)
 
     def _process_pdf(self, filepath: Path, work_dir: Path):
-        self.progress_detail.emit(f"{filepath.name}: Loading PDF...")
+        self.progress_detail.emit(f"{filepath.name}: 載入 PDF...")
         pages = self._pdf.load_pdf(filepath, work_dir)
+        self._check_cancel()
 
         doc = DocumentData(
             doc_id="batch",
@@ -100,60 +110,103 @@ class BatchWorker(QThread):
             pages=pages,
         )
 
-        # OCR pages without text layer
+        # OCR
         for page in pages:
-            if self.isInterruptionRequested():
-                return
+            self._check_cancel()
             if page.has_text_layer and page.ocr_text:
                 continue
             self.progress_detail.emit(
-                f"{filepath.name}: OCR page {page.index + 1}/{len(pages)}"
+                f"{filepath.name}: OCR 第 {page.index + 1}/{len(pages)} 頁"
             )
             blocks = self._openai.ocr_with_bboxes(
                 page.image_path, page.width, page.height
             )
+            self._check_cancel()
             page.text_blocks = blocks
             page.ocr_text = "\n".join(b.text for b in blocks)
 
         # Translate
         if self._do_translate:
             for page in pages:
-                if self.isInterruptionRequested():
-                    return
+                self._check_cancel()
                 if not page.ocr_text:
                     continue
                 self.progress_detail.emit(
-                    f"{filepath.name}: Translating page {page.index + 1}/{len(pages)}"
+                    f"{filepath.name}: 翻譯第 {page.index + 1}/{len(pages)} 頁"
                 )
                 translated = self._openai.translate(page.ocr_text, self._target_lang)
+                self._check_cancel()
                 page.translated_text = translated
-
-                # Also translate blocks for overlay
                 if page.text_blocks:
                     self._openai.translate_blocks(page.text_blocks, self._target_lang)
+                    self._check_cancel()
 
-        # Export PDF
-        self.progress_detail.emit(f"{filepath.name}: Exporting...")
+        # Export
+        self._check_cancel()
         rel = filepath.relative_to(self._input)
-        out_path = self._output / rel
-        out_path.parent.mkdir(parents=True, exist_ok=True)
 
-        pdf_bytes = self._pdf.build_export_pdf(doc, self._overlay_mode, self._export_source)
-        out_path.write_bytes(pdf_bytes)
+        if self._output_txt:
+            self._export_pdf_as_txt(doc, rel)
+        else:
+            self.progress_detail.emit(f"{filepath.name}: 匯出 PDF...")
+            out_path = self._output / rel
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            pdf_bytes = self._pdf.build_export_pdf(doc, self._overlay_mode, self._export_source)
+            out_path.write_bytes(pdf_bytes)
+
+    def _export_pdf_as_txt(self, doc: DocumentData, rel: Path):
+        """Export PDF pages as txt. Multi-page: name_1.txt, name_2.txt, ..."""
+        stem = rel.with_suffix("").as_posix().replace("/", "_")
+
+        if len(doc.pages) == 1:
+            # Single page → one file
+            out_path = self._output / f"{stem}.txt"
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            text = self._get_page_text(doc.pages[0])
+            self.progress_detail.emit(f"{doc.filename}: 匯出 TXT...")
+            out_path.write_text(text, encoding="utf-8")
+        else:
+            # Multi-page → name_1.txt, name_2.txt, ...
+            for page in doc.pages:
+                out_path = self._output / f"{stem}_{page.index + 1}.txt"
+                out_path.parent.mkdir(parents=True, exist_ok=True)
+                text = self._get_page_text(page)
+                self.progress_detail.emit(
+                    f"{doc.filename}: 匯出 TXT 第 {page.index + 1}/{len(doc.pages)} 頁"
+                )
+                out_path.write_text(text, encoding="utf-8")
 
     def _process_image(self, filepath: Path, work_dir: Path):
-        self.progress_detail.emit(f"{filepath.name}: Running OCR...")
+        self.progress_detail.emit(f"{filepath.name}: OCR 辨識中...")
         blocks = self._openai.ocr_with_bboxes(filepath)
+        self._check_cancel()
 
         if self._do_translate and blocks:
-            self.progress_detail.emit(f"{filepath.name}: Translating...")
+            self.progress_detail.emit(f"{filepath.name}: 翻譯中...")
             self._openai.translate_blocks(blocks, self._target_lang)
+            self._check_cancel()
 
-        # Export with overlay
-        self.progress_detail.emit(f"{filepath.name}: Exporting...")
         rel = filepath.relative_to(self._input)
-        out_path = self._output / rel.with_suffix(".png")
-        out_path.parent.mkdir(parents=True, exist_ok=True)
 
-        use_translated = self._do_translate and self._export_source == ExportSource.TRANSLATED
-        self._img.save_with_overlay(filepath, out_path, blocks, self._overlay_mode, use_translated)
+        if self._output_txt:
+            # Image → single txt
+            out_path = self._output / rel.with_suffix(".txt")
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            if self._do_translate:
+                text = "\n".join(b.translated_text or b.text for b in blocks)
+            else:
+                text = "\n".join(b.text for b in blocks)
+            self.progress_detail.emit(f"{filepath.name}: 匯出 TXT...")
+            out_path.write_text(text, encoding="utf-8")
+        else:
+            self.progress_detail.emit(f"{filepath.name}: 匯出圖片...")
+            out_path = self._output / rel.with_suffix(".png")
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            use_translated = self._do_translate and self._export_source == ExportSource.TRANSLATED
+            self._img.save_with_overlay(filepath, out_path, blocks, self._overlay_mode, use_translated)
+
+    def _get_page_text(self, page) -> str:
+        """Get the best text for a page: translated > ocr."""
+        if self._do_translate and page.translated_text:
+            return page.translated_text
+        return page.ocr_text or ""

@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMessageBox,
+    QProgressBar,
     QPushButton,
     QSplitter,
     QStackedWidget,
@@ -33,6 +34,7 @@ from src.services.pdf_service import PdfService
 from src.ui.widgets.drop_zone import DropZone
 from src.ui.widgets.page_thumbnail_list import PageThumbnailList
 from src.ui.widgets.page_viewer import PageViewer
+from src.ui.widgets.spinner import Spinner, StepIndicator
 from src.ui.widgets.text_panel import TextPanel
 from src.workers.ocr_worker import OcrWorker
 from src.workers.translate_worker import TranslateWorker
@@ -63,64 +65,90 @@ class DocumentsTab(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # Toolbar
+        # ── Step indicator ──
+        self._steps = StepIndicator()
+        layout.addWidget(self._steps)
+
+        # ── Toolbar ──
         toolbar_widget = QWidget()
         toolbar_widget.setObjectName("docToolbar")
-        toolbar1 = QHBoxLayout(toolbar_widget)
-        toolbar1.setContentsMargins(14, 8, 14, 8)
-        toolbar1.setSpacing(8)
+        toolbar = QHBoxLayout(toolbar_widget)
+        toolbar.setContentsMargins(14, 8, 14, 8)
+        toolbar.setSpacing(8)
 
-        open_btn = QPushButton(UI["open_file"])
+        open_btn = QPushButton("\U0001F4C2 開啟檔案")
         open_btn.setProperty("secondary", True)
+        open_btn.setToolTip("開啟 PDF 或圖片檔案")
         open_btn.clicked.connect(self._open_file_dialog)
-        toolbar1.addWidget(open_btn)
+        toolbar.addWidget(open_btn)
 
-        self._ocr_btn = QPushButton(UI["ocr_all"])
+        self._ocr_btn = QPushButton("\U0001F50D 執行 OCR 辨識")
+        self._ocr_btn.setToolTip("對所有頁面進行文字辨識")
         self._ocr_btn.clicked.connect(self._ocr_all_pages)
         self._ocr_btn.setEnabled(False)
-        toolbar1.addWidget(self._ocr_btn)
+        toolbar.addWidget(self._ocr_btn)
 
-        self._translate_btn = QPushButton(UI["translate_all"])
+        self._translate_btn = QPushButton("\U0001F310 執行翻譯")
+        self._translate_btn.setToolTip("將辨識結果翻譯為目標語言")
         self._translate_btn.clicked.connect(self._translate_all_pages)
         self._translate_btn.setEnabled(False)
-        toolbar1.addWidget(self._translate_btn)
+        toolbar.addWidget(self._translate_btn)
 
         self._lang_combo = QComboBox()
+        self._lang_combo.setToolTip("選擇翻譯的目標語言")
         self._lang_combo.addItems(TARGET_LANGUAGES)
         default_lang = str(self._config.get("general/target_language", "English"))
         idx = self._lang_combo.findText(default_lang)
         if idx >= 0:
             self._lang_combo.setCurrentIndex(idx)
-        toolbar1.addWidget(self._lang_combo)
+        toolbar.addWidget(self._lang_combo)
 
-        toolbar1.addStretch()
+        toolbar.addStretch()
 
-        # Status (center)
+        # Spinner + status
+        self._spinner = Spinner(18)
+        toolbar.addWidget(self._spinner)
+
         self._status_label = QLabel("")
-        self._status_label.setStyleSheet("color: #8181A5; font-size: 12px;")
-        toolbar1.addWidget(self._status_label)
+        self._status_label.setObjectName("textSecondary")
+        self._status_label.setStyleSheet("font-size: 12px;")
+        toolbar.addWidget(self._status_label)
 
-        toolbar1.addStretch()
+        toolbar.addStretch()
 
         # Export controls
         self._overlay_combo = QComboBox()
+        self._overlay_combo.setToolTip(
+            "匯出 PDF 的文字覆蓋模式\n"
+            "\u2022 可見文字：白底顯示翻譯文字\n"
+            "\u2022 隱藏文字：透明文字層（可搜尋）\n"
+            "\u2022 完全替換：僅保留翻譯文字"
+        )
         self._overlay_combo.addItems([
             UI["overlay_visible"],
             UI["overlay_invisible"],
             UI["overlay_replace"],
         ])
         self._overlay_combo.setEnabled(False)
-        toolbar1.addWidget(self._overlay_combo)
+        toolbar.addWidget(self._overlay_combo)
 
-        self._export_btn = QPushButton(UI["export_pdf"])
+        self._export_btn = QPushButton("\U0001F4BE 匯出 PDF")
         self._export_btn.setProperty("success", True)
+        self._export_btn.setToolTip("將辨識/翻譯結果匯出為 PDF 檔案")
         self._export_btn.clicked.connect(self._export_pdf)
         self._export_btn.setEnabled(False)
-        toolbar1.addWidget(self._export_btn)
+        toolbar.addWidget(self._export_btn)
 
         layout.addWidget(toolbar_widget)
 
-        # Stacked: drop zone vs document view
+        # ── Progress bar (hidden until needed) ──
+        self._progress = QProgressBar()
+        self._progress.setFixedHeight(3)
+        self._progress.setTextVisible(False)
+        self._progress.hide()
+        layout.addWidget(self._progress)
+
+        # ── Stacked: drop zone vs document view ──
         self._stack = QStackedWidget()
 
         self._drop_zone = DropZone()
@@ -155,6 +183,32 @@ class DocumentsTab(QWidget):
 
         self.setAcceptDrops(True)
 
+    # ── Status helpers ──
+
+    def _set_busy(self, msg: str, step: int = -1, progress_max: int = 0):
+        """Show spinner + status + optional progress bar."""
+        self._status_label.setText(msg)
+        self._spinner.start()
+        if step >= 0:
+            self._steps.set_step(step)
+        if progress_max > 0:
+            self._progress.setMaximum(progress_max)
+            self._progress.setValue(0)
+            self._progress.show()
+
+    def _set_progress(self, value: int):
+        self._progress.setValue(value)
+
+    def _set_idle(self, msg: str, step: int = -1):
+        """Hide spinner, update status."""
+        self._status_label.setText(msg)
+        self._spinner.stop()
+        self._progress.hide()
+        if step >= 0:
+            self._steps.set_step(step)
+
+    # ── Drag & drop ──
+
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
@@ -176,12 +230,16 @@ class DocumentsTab(QWidget):
         if path:
             self._load_files([Path(path)])
 
+    # ── Load ──
+
     def _load_files(self, paths: list[Path]):
         if not paths:
             return
 
         path = paths[0]
-        self._status_label.setText(f"{UI['loading']} {path.name}")
+        self._set_busy(f"載入 {path.name} 中...", step=0)
+        from PySide6.QtWidgets import QApplication
+        QApplication.processEvents()  # let spinner render before blocking load
 
         doc_id = uuid.uuid4().hex[:8]
         self._work_dir = Path(tempfile.mkdtemp(prefix="ocrstudio_"))
@@ -196,11 +254,11 @@ class DocumentsTab(QWidget):
                 page = self._pdf_service.load_image(path, self._work_dir, 0)
                 pages = [page]
         except Exception as e:
-            self._status_label.setText(f"載入失敗：{e}")
+            self._set_idle(f"載入失敗：{e}")
             return
 
         if not pages:
-            self._status_label.setText("無法載入檔案")
+            self._set_idle("無法載入檔案")
             return
 
         self._document = DocumentData(
@@ -220,10 +278,12 @@ class DocumentsTab(QWidget):
         self._translate_btn.setEnabled(has_text)
 
         text_count = sum(1 for p in pages if p.has_text_layer)
-        self._status_label.setText(
-            f"已載入 {path.name}：{len(pages)} 頁"
-            + (f"，{text_count} 頁有文字圖層" if text_count else "")
-        )
+        msg = f"已載入 {path.name}：{len(pages)} 頁"
+        if text_count:
+            msg += f"，{text_count} 頁有文字圖層"
+        self._set_idle(msg, step=0)
+
+    # ── Page display ──
 
     @Slot(int)
     def _show_page(self, index: int):
@@ -241,6 +301,8 @@ class DocumentsTab(QWidget):
         self._text_panel.set_ocr_text(page.ocr_text)
         self._text_panel.set_translated_text(page.translated_text)
 
+    # ── OCR ──
+
     def _ocr_all_pages(self):
         if not self._document:
             return
@@ -249,14 +311,15 @@ class DocumentsTab(QWidget):
             return
 
         self._ocr_btn.setEnabled(False)
-        self._status_label.setText(UI["ocr_running"])
+        total = len(self._document.pages)
+        self._set_busy("OCR 辨識中...", step=1, progress_max=total)
         self._ocr_page_chain(0)
 
     def _ocr_page_chain(self, page_index: int):
         if not self._document or page_index >= len(self._document.pages):
             self._ocr_btn.setEnabled(True)
             self._translate_btn.setEnabled(True)
-            self._status_label.setText(UI["ocr_complete"])
+            self._set_idle(UI["ocr_complete"], step=1)
             if self._current_page_index >= 0:
                 self._show_page(self._current_page_index)
             return
@@ -264,11 +327,13 @@ class DocumentsTab(QWidget):
         page = self._document.pages[page_index]
 
         if page.has_text_layer and page.ocr_text:
+            self._set_progress(page_index + 1)
             self._ocr_page_chain(page_index + 1)
             return
 
         total = len(self._document.pages)
         self._status_label.setText(f"OCR 辨識中 {page_index + 1}/{total}...")
+        self._set_progress(page_index)
 
         # For PDFs, render at high resolution for better OCR/bbox accuracy
         source = self._document.source_path
@@ -313,6 +378,7 @@ class DocumentsTab(QWidget):
             page.text_blocks = blocks
             page.ocr_text = text
             self._thumbnails.update_page_status(page_index, True, False)
+            self._set_progress(page_index + 1)
 
             if page_index == self._current_page_index:
                 self._show_page(page_index)
@@ -322,21 +388,25 @@ class DocumentsTab(QWidget):
 
     def _on_page_ocr_error(self, page_index: int, error: str):
         self._status_label.setText(f"OCR 錯誤（第 {page_index + 1} 頁）：{error}")
+        self._set_progress(page_index + 1)
         self._cleanup_finished_workers()
         self._ocr_page_chain(page_index + 1)
+
+    # ── Translation ──
 
     def _translate_all_pages(self):
         if not self._document or not self._openai_service:
             return
 
         self._translate_btn.setEnabled(False)
-        self._status_label.setText(UI["translate_running"])
+        total = len(self._document.pages)
+        self._set_busy("翻譯中...", step=2, progress_max=total)
         self._translate_page_chain(0)
 
     def _translate_page_chain(self, page_index: int):
         if not self._document or page_index >= len(self._document.pages):
             self._translate_btn.setEnabled(True)
-            self._status_label.setText(UI["translate_complete"])
+            self._set_idle(UI["translate_complete"], step=2)
             if self._current_page_index >= 0:
                 self._show_page(self._current_page_index)
             return
@@ -344,11 +414,13 @@ class DocumentsTab(QWidget):
         page = self._document.pages[page_index]
 
         if not page.ocr_text:
+            self._set_progress(page_index + 1)
             self._translate_page_chain(page_index + 1)
             return
 
         total = len(self._document.pages)
         self._status_label.setText(f"翻譯中 {page_index + 1}/{total}...")
+        self._set_progress(page_index)
 
         lang = self._lang_combo.currentText()
 
@@ -371,13 +443,13 @@ class DocumentsTab(QWidget):
         worker.start()
 
     def _on_page_translate_blocks_done(self, page_index: int, blocks: list):
-        """Handle per-block translation results (accurate bbox-to-text mapping)."""
         if self._document and page_index < len(self._document.pages):
             page = self._document.pages[page_index]
             page.text_blocks = blocks
             page.translated_text = "\n".join(
                 b.translated_text for b in blocks if b.translated_text)
             self._thumbnails.update_page_status(page_index, bool(page.ocr_text), True)
+            self._set_progress(page_index + 1)
 
             if page_index == self._current_page_index:
                 self._text_panel.set_translated_text(page.translated_text)
@@ -390,6 +462,7 @@ class DocumentsTab(QWidget):
             page = self._document.pages[page_index]
             page.translated_text = translated_text
             self._thumbnails.update_page_status(page_index, bool(page.ocr_text), True)
+            self._set_progress(page_index + 1)
 
             if page_index == self._current_page_index:
                 self._text_panel.set_translated_text(translated_text)
@@ -399,8 +472,11 @@ class DocumentsTab(QWidget):
 
     def _on_page_translate_error(self, page_index: int, error: str):
         self._status_label.setText(f"翻譯錯誤（第 {page_index + 1} 頁）：{error}")
+        self._set_progress(page_index + 1)
         self._cleanup_finished_workers()
         self._translate_page_chain(page_index + 1)
+
+    # ── Export ──
 
     def _export_pdf(self):
         if not self._document:
@@ -420,16 +496,16 @@ class DocumentsTab(QWidget):
         overlay_idx = self._overlay_combo.currentIndex()
         overlay_mode = overlay_modes[overlay_idx] if overlay_idx < len(overlay_modes) else OverlayMode.VISIBLE
 
-        self._status_label.setText("匯出中...")
+        self._set_busy("匯出 PDF 中...", step=3)
         try:
             pdf_bytes = self._pdf_service.build_export_pdf(
                 self._document, overlay_mode, export_source
             )
             Path(path).write_bytes(pdf_bytes)
-            self._status_label.setText(UI["export_complete"])
+            self._set_idle(UI["export_complete"], step=3)
             QMessageBox.information(self, UI["export_pdf"], f"已匯出至：\n{path}")
         except Exception as e:
-            self._status_label.setText(f"匯出錯誤：{e}")
+            self._set_idle(f"匯出錯誤：{e}")
             QMessageBox.critical(self, "錯誤", str(e))
 
     def _cleanup_finished_workers(self):

@@ -40,7 +40,7 @@ class CaptureTab(QWidget):
 
         hotkey = str(config.get_hotkey())
         hint = QLabel(UI["capture_hint"].format(hotkey=hotkey))
-        hint.setStyleSheet("color: #8181A5;")
+        hint.setObjectName("textSecondary")
         toolbar.addWidget(hint)
 
         layout.addLayout(toolbar)
@@ -60,8 +60,15 @@ class CaptureTab(QWidget):
         self._detail_image = QLabel()
         self._detail_image.setFixedHeight(200)
         self._detail_image.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._detail_image.setStyleSheet("background-color: #F0F0F5; border-radius: 8px;")
+        self._detail_image.setObjectName("surfaceAlt")
         detail_layout.addWidget(self._detail_image)
+
+        # Empty state hint
+        self._empty_hint = QLabel("\U0001F4F7 使用快捷鍵截取螢幕區域\n辨識結果會顯示在這裡")
+        self._empty_hint.setObjectName("textDimmed")
+        self._empty_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._empty_hint.setStyleSheet("font-size: 13px;")
+        detail_layout.addWidget(self._empty_hint)
 
         self._detail_text = QTextEdit()
         self._detail_text.setReadOnly(True)
@@ -91,6 +98,7 @@ class CaptureTab(QWidget):
         item = QListWidgetItem(f"[{label}] {preview}")
         self._list.insertItem(0, item)
         self._list.setCurrentRow(0)
+        self._empty_hint.hide()
 
     def _on_selection_changed(self, row: int):
         if row < 0 or row >= len(self._captures):

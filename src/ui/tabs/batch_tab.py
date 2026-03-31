@@ -1,4 +1,4 @@
-"""Batch folder processing UI."""
+"""Batch folder processing UI — file listing + live progress."""
 
 from pathlib import Path
 
@@ -22,7 +22,11 @@ from PySide6.QtWidgets import (
 )
 
 from src.config import ConfigManager
-from src.constants import TARGET_LANGUAGES, UI
+from src.constants import (
+    SUPPORTED_EXTENSIONS,
+    TARGET_LANGUAGES,
+    UI,
+)
 from src.models import ExportSource, OverlayMode
 from src.services.image_service import ImageService
 from src.services.openai_service import OpenAIService
@@ -40,6 +44,7 @@ class BatchTab(QWidget):
         )
         self._image_service = ImageService()
         self._worker: BatchWorker | None = None
+        self._pending_files: list[Path] = []
 
         self._build_ui()
 
@@ -49,7 +54,7 @@ class BatchTab(QWidget):
     def _build_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(24, 16, 24, 16)
-        layout.setSpacing(16)
+        layout.setSpacing(12)
 
         # Settings group
         settings = QGroupBox(UI["settings"])
@@ -93,7 +98,20 @@ class BatchTab(QWidget):
             self._lang_combo.setCurrentIndex(idx)
         form.addRow(UI["target_language"] + ":", self._lang_combo)
 
-        # Overlay mode
+        # Output format
+        self._output_format_combo = QComboBox()
+        self._output_format_combo.setToolTip(
+            "原始格式：PDF→PDF、圖片→PNG（含文字覆蓋）\n"
+            "純文字 TXT：只輸出 OCR / 翻譯文字"
+        )
+        self._output_format_combo.addItems([
+            "原始格式（PDF / 圖片 + 文字覆蓋）",
+            "純文字 TXT（僅輸出辨識文字）",
+        ])
+        self._output_format_combo.currentIndexChanged.connect(self._on_format_changed)
+        form.addRow("輸出格式:", self._output_format_combo)
+
+        # Overlay mode (only for original format)
         self._overlay_combo = QComboBox()
         self._overlay_combo.addItems([
             UI["overlay_visible"],
@@ -111,7 +129,7 @@ class BatchTab(QWidget):
 
         # Action buttons
         btn_row = QHBoxLayout()
-        self._start_btn = QPushButton(UI["start"])
+        self._start_btn = QPushButton("\u25B6 " + UI["start"])
         self._start_btn.clicked.connect(self._start)
         btn_row.addWidget(self._start_btn)
 
@@ -122,30 +140,71 @@ class BatchTab(QWidget):
         btn_row.addWidget(self._cancel_btn)
 
         btn_row.addStretch()
+
+        # File count label
+        self._file_count_label = QLabel("")
+        self._file_count_label.setObjectName("textSecondary")
+        btn_row.addWidget(self._file_count_label)
+
         layout.addLayout(btn_row)
 
-        # Progress
+        # Progress bar
         self._progress = QProgressBar()
+        self._progress.setTextVisible(True)
+        self._progress.setFormat("%v / %m 個檔案")
         self._progress.setVisible(False)
         layout.addWidget(self._progress)
 
         self._detail_label = QLabel("")
-        self._detail_label.setStyleSheet("color: #8181A5;")
+        self._detail_label.setObjectName("textSecondary")
         layout.addWidget(self._detail_label)
 
-        # Log
+        # File list / log
         self._log = QListWidget()
         layout.addWidget(self._log, 1)
+
+    def _on_format_changed(self, index: int):
+        """Hide overlay options when TXT output is selected."""
+        is_txt = (index == 1)
+        self._overlay_combo.setEnabled(not is_txt)
 
     def _browse_input(self):
         path = QFileDialog.getExistingDirectory(self, UI["input_folder"])
         if path:
             self._input_edit.setText(path)
+            self._scan_files(Path(path))
 
     def _browse_output(self):
         path = QFileDialog.getExistingDirectory(self, UI["output_folder"])
         if path:
             self._output_edit.setText(path)
+
+    def _scan_files(self, folder: Path):
+        """Scan input folder and list files."""
+        self._pending_files = sorted(
+            p for p in folder.rglob("*")
+            if p.is_file() and p.suffix.lower() in SUPPORTED_EXTENSIONS
+        )
+        self._log.clear()
+        total = len(self._pending_files)
+
+        if total == 0:
+            self._file_count_label.setText("沒有找到支援的檔案")
+            return
+
+        # Show first 10, then "...and N more"
+        show_count = min(total, 10)
+        for i in range(show_count):
+            rel = self._pending_files[i].relative_to(folder)
+            item = QListWidgetItem(f"  \u2022  {rel}")
+            self._log.addItem(item)
+
+        if total > 10:
+            more = QListWidgetItem(f"  ... 還有 {total - 10} 個檔案")
+            more.setForeground(Qt.GlobalColor.gray)
+            self._log.addItem(more)
+
+        self._file_count_label.setText(f"共 {total} 個檔案")
 
     def _start(self):
         input_path = self._input_edit.text().strip()
@@ -163,14 +222,16 @@ class BatchTab(QWidget):
 
         overlay_map = {0: OverlayMode.VISIBLE, 1: OverlayMode.INVISIBLE, 2: OverlayMode.REPLACE}
         overlay_mode = overlay_map.get(self._overlay_combo.currentIndex(), OverlayMode.VISIBLE)
-
         export_source = ExportSource.TRANSLATED if self._translate_check.isChecked() else ExportSource.OCR
+        output_txt = (self._output_format_combo.currentIndex() == 1)
 
         self._log.clear()
         self._progress.setVisible(True)
         self._progress.setValue(0)
+        self._progress.setMaximum(0)
         self._start_btn.setEnabled(False)
         self._cancel_btn.setEnabled(True)
+        self._detail_label.setText("準備中...")
 
         self._worker = BatchWorker(
             openai_service=self._openai_service,
@@ -182,6 +243,7 @@ class BatchTab(QWidget):
             overlay_mode=overlay_mode,
             export_source=export_source,
             do_translate=self._translate_check.isChecked(),
+            output_txt=output_txt,
         )
         self._worker.file_started.connect(self._on_file_started)
         self._worker.file_completed.connect(self._on_file_completed)
@@ -199,21 +261,22 @@ class BatchTab(QWidget):
     def _on_file_started(self, filename: str, current: int, total: int):
         self._progress.setMaximum(total)
         self._progress.setValue(current - 1)
-        self._detail_label.setText(f"處理中 {filename} ({current}/{total})")
+        self._detail_label.setText(f"處理中 ({current}/{total})：{filename}")
 
     @Slot(str)
     def _on_file_completed(self, filename: str):
-        item = QListWidgetItem(f"[OK] {filename}")
-        item.setForeground(Qt.GlobalColor.green)
+        item = QListWidgetItem(f"\u2705  {filename}")
         self._log.addItem(item)
         self._log.scrollToBottom()
+        # Update progress
+        self._progress.setValue(self._progress.value() + 1)
 
     @Slot(str, str)
     def _on_file_failed(self, filename: str, error: str):
-        item = QListWidgetItem(f"[FAIL] {filename} - {error}")
-        item.setForeground(Qt.GlobalColor.red)
+        item = QListWidgetItem(f"\u274C  {filename} — {error}")
         self._log.addItem(item)
         self._log.scrollToBottom()
+        self._progress.setValue(self._progress.value() + 1)
 
     @Slot(int, int)
     def _on_all_completed(self, success: int, failed: int):

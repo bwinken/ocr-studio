@@ -64,12 +64,23 @@ class SettingsTab(QWidget):
 
         self._ocr_model_combo = QComboBox()
         self._ocr_model_combo.setEditable(True)
-        self._ocr_model_combo.addItems(["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini"])
+        self._ocr_model_combo.setToolTip(
+            "OCR 文字辨識使用的模型\n"
+            "模型名包含 paddle 會自動切換 PaddleOCR 模式\n"
+            "例如：PaddleOCR-VL-1.5-0.9B"
+        )
+        self._ocr_model_combo.addItems([
+            "gpt-4o", "gpt-4o-mini", "gpt-5.4-nano",
+            "PaddleOCR-VL-1.5-0.9B",
+        ])
         api_layout.addRow(UI["ocr_model"] + ":", self._ocr_model_combo)
 
         self._translate_model_combo = QComboBox()
         self._translate_model_combo.setEditable(True)
-        self._translate_model_combo.addItems(["gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-mini"])
+        self._translate_model_combo.setToolTip("翻譯使用的模型，建議使用較大的語言模型")
+        self._translate_model_combo.addItems([
+            "gpt-4o", "gpt-4o-mini", "gpt-5.4-nano",
+        ])
         api_layout.addRow(UI["translate_model"] + ":", self._translate_model_combo)
 
         layout.addWidget(api_group)
@@ -81,6 +92,10 @@ class SettingsTab(QWidget):
 
         self._ocr_base_url_edit = QLineEdit()
         self._ocr_base_url_edit.setPlaceholderText("留空 = 使用上方 Base URL")
+        self._ocr_base_url_edit.setToolTip(
+            "如果 OCR 模型部署在不同的伺服器，請填寫\n"
+            "例如：http://localhost:8000/v1（vLLM 本地部署）"
+        )
         ocr_layout.addRow("OCR Base URL:", self._ocr_base_url_edit)
 
         self._ocr_api_key_edit = QLineEdit()
@@ -89,6 +104,10 @@ class SettingsTab(QWidget):
         ocr_layout.addRow("OCR API Key:", self._ocr_api_key_edit)
 
         self._structured_output_check = QCheckBox("使用 Structured Output（強制 JSON 格式）")
+        self._structured_output_check.setToolTip(
+            "啟用後 API 會以 JSON Schema 格式回傳結果\n"
+            "PaddleOCR 模型會自動忽略此設定"
+        )
         self._structured_output_check.setChecked(True)
         ocr_layout.addRow("", self._structured_output_check)
 
@@ -107,6 +126,10 @@ class SettingsTab(QWidget):
         self._render_scale_spin.setRange(1.0, 4.0)
         self._render_scale_spin.setSingleStep(0.5)
         self._render_scale_spin.setDecimals(1)
+        self._render_scale_spin.setToolTip(
+            "OCR 時 PDF 渲染的解析度倍率\n"
+            "越高越精準但越慢，建議 2.0"
+        )
         general_layout.addRow(UI["pdf_scale"] + ":", self._render_scale_spin)
 
         layout.addWidget(general_group)
@@ -118,6 +141,7 @@ class SettingsTab(QWidget):
 
         self._hotkey_edit = QLineEdit()
         self._hotkey_edit.setPlaceholderText("Ctrl+Shift+O")
+        self._hotkey_edit.setToolTip("隨時按下此快捷鍵即可截取螢幕區域進行 OCR")
         capture_layout.addRow(UI["hotkey"] + ":", self._hotkey_edit)
 
         self._auto_translate_check = QCheckBox(UI["auto_translate_capture"])

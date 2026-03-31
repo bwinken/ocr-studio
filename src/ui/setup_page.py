@@ -1,4 +1,4 @@
-"""First-time API setup page shown when no API key is configured."""
+"""First-time API setup page — guided onboarding."""
 
 import httpx
 from PySide6.QtCore import Qt, Signal
@@ -6,7 +6,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QMessageBox,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -16,8 +15,6 @@ from src.constants import UI
 
 
 class SetupPage(QWidget):
-    """Shown on first launch to configure API key and base URL."""
-
     setup_complete = Signal()
 
     def __init__(self, config, parent=None):
@@ -29,60 +26,74 @@ class SetupPage(QWidget):
         outer = QVBoxLayout(self)
         outer.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # Center container
         container = QWidget()
-        container.setMaximumWidth(500)
+        container.setMaximumWidth(480)
         layout = QVBoxLayout(container)
-        layout.setSpacing(20)
+        layout.setSpacing(16)
+
+        # Step icon
+        icon = QLabel("\U0001F511")  # 🔑
+        icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon.setStyleSheet("font-size: 40px; border: none;")
+        layout.addWidget(icon)
 
         # Title
-        title = QLabel(UI["setup_title"])
+        title = QLabel("設定 API 連線")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setStyleSheet("font-size: 24px; font-weight: bold;")
+        title.setStyleSheet("font-size: 22px; font-weight: 400; color: #1F1F1F;")
         layout.addWidget(title)
 
-        subtitle = QLabel(UI["setup_subtitle"])
+        subtitle = QLabel("OCR Studio 需要 OpenAI 相容的 API 來進行文字辨識與翻譯")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        subtitle.setWordWrap(True)
         subtitle.setStyleSheet("font-size: 13px; color: #8181A5;")
         layout.addWidget(subtitle)
 
-        layout.addSpacing(20)
+        layout.addSpacing(12)
 
         # Base URL
-        url_label = QLabel(UI["base_url"])
-        url_label.setStyleSheet("font-weight: bold;")
+        url_label = QLabel("API Base URL")
+        url_label.setStyleSheet("font-size: 12px; font-weight: 500; color: #8181A5;")
         layout.addWidget(url_label)
 
         self._base_url_edit = QLineEdit()
-        self._base_url_edit.setPlaceholderText(UI["base_url_placeholder"])
+        self._base_url_edit.setPlaceholderText("https://api.openai.com/v1")
         self._base_url_edit.setText(self._config.get_base_url())
         self._base_url_edit.setMinimumHeight(40)
         layout.addWidget(self._base_url_edit)
 
         # API Key
-        key_label = QLabel(UI["api_key"])
-        key_label.setStyleSheet("font-weight: bold;")
+        key_label = QLabel("API Key")
+        key_label.setStyleSheet("font-size: 12px; font-weight: 500; color: #8181A5;")
         layout.addWidget(key_label)
 
         self._api_key_edit = QLineEdit()
-        self._api_key_edit.setPlaceholderText(UI["api_key_placeholder"])
+        self._api_key_edit.setPlaceholderText("sk-...")
         self._api_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
         self._api_key_edit.setMinimumHeight(40)
         layout.addWidget(self._api_key_edit)
 
-        layout.addSpacing(10)
+        # Hint
+        hint = QLabel(
+            "\U0001F4A1 支援 OpenAI、Azure、vLLM、Ollama 等相容 API"
+        )
+        hint.setStyleSheet("font-size: 11px; color: #ADADC0;")
+        layout.addWidget(hint)
+
+        layout.addSpacing(8)
 
         # Buttons
         btn_row = QHBoxLayout()
+        btn_row.setSpacing(10)
 
-        self._test_btn = QPushButton(UI["test_connection"])
+        self._test_btn = QPushButton("\u26A1 " + UI["test_connection"])
         self._test_btn.setProperty("secondary", True)
-        self._test_btn.setMinimumHeight(44)
+        self._test_btn.setMinimumHeight(42)
         self._test_btn.clicked.connect(self._test_connection)
         btn_row.addWidget(self._test_btn)
 
-        self._save_btn = QPushButton(UI["save_and_start"])
-        self._save_btn.setMinimumHeight(44)
+        self._save_btn = QPushButton(UI["save_and_start"] + " \u2192")
+        self._save_btn.setMinimumHeight(42)
         self._save_btn.clicked.connect(self._save_and_start)
         btn_row.addWidget(self._save_btn)
 
@@ -91,6 +102,7 @@ class SetupPage(QWidget):
         # Status
         self._status = QLabel("")
         self._status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._status.setWordWrap(True)
         layout.addWidget(self._status)
 
         outer.addWidget(container)
@@ -100,12 +112,12 @@ class SetupPage(QWidget):
         base_url = self._base_url_edit.text().strip() or "https://api.openai.com/v1"
 
         if not api_key:
-            self._status.setText(UI["no_api_key"])
+            self._status.setText("\u26A0 請先輸入 API Key")
             self._status.setStyleSheet("color: #D93025;")
             return
 
         self._test_btn.setEnabled(False)
-        self._test_btn.setText("...")
+        self._test_btn.setText("\u23F3 測試中...")
         self._status.setText("")
 
         try:
@@ -128,21 +140,21 @@ class SetupPage(QWidget):
                         err_msg = resp.text
                     raise RuntimeError(f"{resp.status_code}: {err_msg}")
 
-            self._status.setText(UI["test_success"])
+            self._status.setText("\u2705 連線成功！")
             self._status.setStyleSheet("color: #006F0C;")
         except Exception as e:
-            self._status.setText(f"{UI['test_fail']}：{e}")
+            self._status.setText(f"\u274C 連線失敗：{e}")
             self._status.setStyleSheet("color: #D93025;")
         finally:
             self._test_btn.setEnabled(True)
-            self._test_btn.setText(UI["test_connection"])
+            self._test_btn.setText("\u26A1 " + UI["test_connection"])
 
     def _save_and_start(self):
         api_key = self._api_key_edit.text().strip()
         base_url = self._base_url_edit.text().strip() or "https://api.openai.com/v1"
 
         if not api_key:
-            self._status.setText(UI["no_api_key"])
+            self._status.setText("\u26A0 請先輸入 API Key")
             self._status.setStyleSheet("color: #D93025;")
             return
 

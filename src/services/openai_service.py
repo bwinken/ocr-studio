@@ -3,7 +3,8 @@
 Supports:
 - Separate OCR and translation endpoints (different base_url/model)
 - Structured output (response_format) for reliable JSON
-- API returns both text + bbox in one call
+- Generic VLM: API returns both text + bbox in one call
+- PaddleOCR-VL: auto-detected by model name, uses "Spotting:" prompt
 """
 
 import base64
@@ -103,6 +104,11 @@ class OpenAIService:
         self.use_structured_output = use_structured_output
 
     @property
+    def _is_paddle_ocr(self) -> bool:
+        """Auto-detect PaddleOCR-VL model by name."""
+        return "paddle" in self.ocr_model.lower()
+
+    @property
     def _translate_endpoint(self) -> str:
         return f"{self.base_url}{self.ENDPOINT_PATH}"
 
@@ -144,13 +150,17 @@ class OpenAIService:
             "messages": [{
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": prompt},
                     {"type": "image_url", "image_url": {"url": image_b64}},
+                    {"type": "text", "text": prompt},
                 ],
             }],
             "max_completion_tokens": self.max_tokens,
-            "temperature": self.temperature_ocr,
+            "temperature": 0.0 if self._is_paddle_ocr else self.temperature_ocr,
         }
+
+        # PaddleOCR-VL: never use structured output
+        if self._is_paddle_ocr:
+            use_structured = False
 
         with httpx.Client(timeout=180) as client:
             if use_structured and self.use_structured_output:
@@ -274,6 +284,69 @@ class OpenAIService:
                 ))
         return blocks
 
+    # ── PaddleOCR-VL spotting parser ──
+
+    @staticmethod
+    def _parse_paddle_spotting(raw: str, img_w: int, img_h: int) -> list[TextBlock]:
+        """Parse PaddleOCR-VL 'Spotting:' response.
+
+        PaddleOCR spotting output format (one line per text region):
+            text_content <poly> x1,y1 x2,y2 x3,y3 x4,y4 </poly>
+        The 4 points are a quadrilateral (may be rotated).
+        We convert to axis-aligned bbox [min_x, min_y, max_x, max_y].
+        """
+        blocks = []
+        for line in raw.strip().split("\n"):
+            line = line.strip()
+            if not line:
+                continue
+
+            # Extract polygon coordinates
+            poly_match = re.search(r"<poly>\s*(.+?)\s*</poly>", line)
+            if poly_match:
+                text = line[:poly_match.start()].strip()
+                coords_str = poly_match.group(1)
+            else:
+                # No polygon — plain text line, skip bbox
+                continue
+
+            if not text:
+                continue
+
+            # Parse "x1,y1 x2,y2 x3,y3 x4,y4"
+            try:
+                points = []
+                for pair in coords_str.split():
+                    parts = pair.split(",")
+                    if len(parts) == 2:
+                        points.append((float(parts[0]), float(parts[1])))
+
+                if len(points) < 3:
+                    continue
+
+                xs = [p[0] for p in points]
+                ys = [p[1] for p in points]
+                x0 = max(0, min(xs))
+                y0 = max(0, min(ys))
+                x1 = min(img_w, max(xs))
+                y1 = min(img_h, max(ys))
+
+                if x1 > x0 and y1 > y0:
+                    blocks.append(TextBlock(
+                        text=text,
+                        bbox=BBox(x0=x0, y0=y0, x1=x1, y1=y1),
+                    ))
+            except (ValueError, IndexError):
+                continue
+
+        return blocks
+
+    @staticmethod
+    def _parse_paddle_ocr(raw: str) -> str:
+        """Parse PaddleOCR-VL 'OCR:' response — just plain text."""
+        # PaddleOCR OCR mode returns markdown-formatted text
+        return raw.strip()
+
     # ── Public OCR methods ──
 
     def ocr_with_bboxes(self, image_path: Path, width: int = 0, height: int = 0) -> list[TextBlock]:
@@ -285,28 +358,40 @@ class OpenAIService:
                 width, height = img.size
 
         b64 = self._image_file_to_b64(image_path)
-        prompt = self.OCR_COMBINED_PROMPT.format(width=width, height=height)
-        raw = self._call_ocr_vision(prompt, b64, use_structured=True)
-        return self._parse_blocks(raw)
+
+        if self._is_paddle_ocr:
+            raw = self._call_ocr_vision("Spotting:", b64)
+            return self._parse_paddle_spotting(raw, width, height)
+        else:
+            prompt = self.OCR_COMBINED_PROMPT.format(width=width, height=height)
+            raw = self._call_ocr_vision(prompt, b64, use_structured=True)
+            return self._parse_blocks(raw)
 
     def ocr_bytes_with_bboxes(self, image_bytes: bytes, width: int = 0, height: int = 0) -> list[TextBlock]:
         """OCR from in-memory image bytes."""
         optimized, width, height = self._optimize_image_bytes(image_bytes)
         b64 = self._bytes_to_b64(optimized)
-        prompt = self.OCR_COMBINED_PROMPT.format(width=width, height=height)
-        raw = self._call_ocr_vision(prompt, b64, use_structured=True)
-        return self._parse_blocks(raw)
+
+        if self._is_paddle_ocr:
+            raw = self._call_ocr_vision("Spotting:", b64)
+            return self._parse_paddle_spotting(raw, width, height)
+        else:
+            prompt = self.OCR_COMBINED_PROMPT.format(width=width, height=height)
+            raw = self._call_ocr_vision(prompt, b64, use_structured=True)
+            return self._parse_blocks(raw)
 
     def ocr_plain(self, image_path: Path) -> str:
         """OCR image, return plain text."""
         b64 = self._image_file_to_b64(image_path)
-        return self._call_ocr_vision(self.OCR_PLAIN_PROMPT, b64)
+        prompt = "OCR:" if self._is_paddle_ocr else self.OCR_PLAIN_PROMPT
+        return self._call_ocr_vision(prompt, b64)
 
     def ocr_bytes_plain(self, image_bytes: bytes) -> str:
         """OCR from in-memory bytes, plain text."""
         optimized, _, _ = self._optimize_image_bytes(image_bytes)
         b64 = self._bytes_to_b64(optimized)
-        return self._call_ocr_vision(self.OCR_PLAIN_PROMPT, b64)
+        prompt = "OCR:" if self._is_paddle_ocr else self.OCR_PLAIN_PROMPT
+        return self._call_ocr_vision(prompt, b64)
 
     # ── Translation ──
 

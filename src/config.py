@@ -27,6 +27,7 @@ class ConfigManager:
         "capture/copy_to_clipboard": True,
         "batch/overlay_mode": "visible",
         "batch/export_source": "translated",
+        "general/theme": "dark",  # "light" or "dark"
     }
 
     def __init__(self):
