@@ -1,6 +1,6 @@
 [project]
 name = "ocr-studio"
-version = "0.1.0"
+version = "0.1.1"
 description = "Windows desktop OCR & translation tool powered by OpenAI GPT-4o"
 requires-python = ">=3.11"
 dependencies = [
