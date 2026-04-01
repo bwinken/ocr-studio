@@ -1,0 +1,66 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  id-token: write
+  actions: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install uv
+          uv sync
+          uv pip install pyinstaller
+
+      - name: Build exe
+        run: uv run python scripts/build_exe.py
+
+      - name: Create zip
+        run: |
+          $tag = "${{ github.ref_name }}"
+          Compress-Archive -Path "build/dist/OCRStudio" -DestinationPath "build/dist/OCRStudio-$tag-win64.zip"
+        shell: pwsh
+
+      - name: Upload unsigned artifact
+        id: upload-unsigned
+        uses: actions/upload-artifact@v4
+        with:
+          name: OCRStudio-unsigned
+          path: build/dist/OCRStudio-*.zip
+
+      # ── SignPath code signing (remove this section if not yet approved) ──
+      - name: Sign with SignPath
+        if: vars.SIGNPATH_ENABLED == 'true'
+        id: sign
+        uses: signpath/github-action-submit-signing-request@v2
+        with:
+          api-token: '${{ secrets.SIGNPATH_API_TOKEN }}'
+          organization-id: '${{ vars.SIGNPATH_ORG_ID }}'
+          project-slug: 'ocr-studio'
+          signing-policy-slug: 'release-signing'
+          github-artifact-id: '${{ steps.upload-unsigned.outputs.artifact-id }}'
+          wait-for-completion: true
+          output-artifact-directory: 'build/dist/signed'
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/dist/OCRStudio-*.zip
+            build/dist/signed/**/*.zip
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') }}
