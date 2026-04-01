@@ -139,6 +139,33 @@ class OpenAIService:
                 err_msg = resp.text
             raise RuntimeError(f"API {resp.status_code}: {err_msg}")
 
+    @staticmethod
+    def _parse_api_response(resp: httpx.Response) -> str:
+        """Extract message content from an OpenAI-compatible chat response.
+
+        Handles empty bodies, non-JSON responses, and unexpected structures
+        that some compatible servers may return.
+        """
+        text = resp.text.strip()
+        if not text:
+            raise RuntimeError(
+                "API returned an empty response body. "
+                "Check that the server URL and model name are correct."
+            )
+        try:
+            body = resp.json()
+        except Exception:
+            raise RuntimeError(
+                f"API returned non-JSON response: {text[:200]}"
+            )
+
+        try:
+            return body["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError):
+            raise RuntimeError(
+                f"Unexpected API response structure: {json.dumps(body)[:300]}"
+            )
+
     def _call_ocr_vision(self, prompt: str, image_b64: str,
                          use_structured: bool = False) -> str:
         """Call OCR endpoint with vision."""
@@ -154,7 +181,7 @@ class OpenAIService:
                     {"type": "text", "text": prompt},
                 ],
             }],
-            "max_completion_tokens": self.max_tokens,
+            "max_tokens": self.max_tokens,
             "temperature": 0.0 if self._is_paddle_ocr else self.temperature_ocr,
         }
 
@@ -166,7 +193,7 @@ class OpenAIService:
             if use_structured and self.use_structured_output:
                 payload["response_format"] = self.OCR_RESPONSE_SCHEMA
                 resp = client.post(self._ocr_endpoint, headers=self._ocr_headers(), json=payload)
-                if resp.status_code == 400:
+                if resp.status_code >= 400:
                     # Structured output failed — retry without it
                     payload.pop("response_format", None)
                     msg = payload["messages"][0]["content"]
@@ -181,11 +208,11 @@ class OpenAIService:
                     resp = client.post(self._ocr_endpoint, headers=self._ocr_headers(), json=payload)
 
                 self._check_response(resp)
-                return resp.json()["choices"][0]["message"]["content"]
+                return self._parse_api_response(resp)
             else:
                 resp = client.post(self._ocr_endpoint, headers=self._ocr_headers(), json=payload)
                 self._check_response(resp)
-                return resp.json()["choices"][0]["message"]["content"]
+                return self._parse_api_response(resp)
 
     def _call_translate(self, system: str, user: str) -> str:
         """Call translation endpoint."""
@@ -195,13 +222,13 @@ class OpenAIService:
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
             ],
-            "max_completion_tokens": self.max_tokens,
+            "max_tokens": self.max_tokens,
             "temperature": self.temperature_translate,
         }
         with httpx.Client(timeout=180) as client:
             resp = client.post(self._translate_endpoint, headers=self._translate_headers(), json=payload)
             self._check_response(resp)
-            return resp.json()["choices"][0]["message"]["content"]
+            return self._parse_api_response(resp)
 
     # ── Image helpers ──
 
