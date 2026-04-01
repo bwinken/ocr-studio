@@ -181,7 +181,7 @@ class OpenAIService:
                     {"type": "text", "text": prompt},
                 ],
             }],
-            "max_completion_tokens": self.max_tokens,
+            "max_tokens": self.max_tokens,
             "temperature": 0.0 if self._is_paddle_ocr else self.temperature_ocr,
         }
 
@@ -193,7 +193,7 @@ class OpenAIService:
             if use_structured and self.use_structured_output:
                 payload["response_format"] = self.OCR_RESPONSE_SCHEMA
                 resp = client.post(self._ocr_endpoint, headers=self._ocr_headers(), json=payload)
-                if resp.status_code == 400:
+                if resp.status_code >= 400:
                     # Structured output failed — retry without it
                     payload.pop("response_format", None)
                     msg = payload["messages"][0]["content"]
@@ -222,7 +222,7 @@ class OpenAIService:
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
             ],
-            "max_completion_tokens": self.max_tokens,
+            "max_tokens": self.max_tokens,
             "temperature": self.temperature_translate,
         }
         with httpx.Client(timeout=180) as client:
