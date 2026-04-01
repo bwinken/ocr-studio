@@ -22,74 +22,68 @@ class PdfService:
         """Open PDF, render each page as small preview PNG, extract text layers."""
         work_dir.mkdir(parents=True, exist_ok=True)
         pdf_bytes = pdf_path.read_bytes()
-        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
         pages = []
 
-        for i, page in enumerate(doc):
-            # Render at PREVIEW scale for fast loading
-            mat = fitz.Matrix(PREVIEW_SCALE, PREVIEW_SCALE)
-            pix = page.get_pixmap(matrix=mat)
-            img_path = work_dir / f"page_{i}.png"
-            pix.save(str(img_path))
+        with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
+            for i, page in enumerate(doc):
+                mat = fitz.Matrix(PREVIEW_SCALE, PREVIEW_SCALE)
+                pix = page.get_pixmap(matrix=mat)
+                img_path = work_dir / f"page_{i}.png"
+                pix.save(str(img_path))
 
-            # Page rect origin - text coords are absolute, pixmap starts at rect origin
-            rect = page.rect
-            ox, oy = rect.x0, rect.y0
+                rect = page.rect
+                ox, oy = rect.x0, rect.y0
 
-            # Extract existing text layer
-            text_dict = page.get_text("dict")
-            text_blocks = []
-            text_parts = []
+                text_dict = page.get_text("dict")
+                text_blocks = []
+                text_parts = []
 
-            for block in text_dict.get("blocks", []):
-                if block.get("type") == 0:
-                    block_text_parts = []
-                    for line in block.get("lines", []):
-                        line_text = ""
-                        for span in line.get("spans", []):
-                            line_text += span.get("text", "")
-                        if line_text.strip():
-                            block_text_parts.append(line_text.strip())
+                for block in text_dict.get("blocks", []):
+                    if block.get("type") == 0:
+                        block_text_parts = []
+                        for line in block.get("lines", []):
+                            line_text = ""
+                            for span in line.get("spans", []):
+                                line_text += span.get("text", "")
+                            if line_text.strip():
+                                block_text_parts.append(line_text.strip())
 
-                    block_text = " ".join(block_text_parts)
-                    if block_text.strip():
-                        bbox = block["bbox"]
-                        # Subtract page origin and scale to pixmap coords
-                        text_blocks.append(TextBlock(
-                            text=block_text,
-                            bbox=BBox(
-                                x0=(bbox[0] - ox) * PREVIEW_SCALE,
-                                y0=(bbox[1] - oy) * PREVIEW_SCALE,
-                                x1=(bbox[2] - ox) * PREVIEW_SCALE,
-                                y1=(bbox[3] - oy) * PREVIEW_SCALE,
-                            ),
-                        ))
-                        text_parts.append(block_text)
+                        block_text = " ".join(block_text_parts)
+                        if block_text.strip():
+                            bbox = block["bbox"]
+                            text_blocks.append(TextBlock(
+                                text=block_text,
+                                bbox=BBox(
+                                    x0=(bbox[0] - ox) * PREVIEW_SCALE,
+                                    y0=(bbox[1] - oy) * PREVIEW_SCALE,
+                                    x1=(bbox[2] - ox) * PREVIEW_SCALE,
+                                    y1=(bbox[3] - oy) * PREVIEW_SCALE,
+                                ),
+                            ))
+                            text_parts.append(block_text)
 
-            has_text = len(text_blocks) > 0
-            pages.append(PageData(
-                index=i,
-                image_path=img_path,
-                width=pix.width,
-                height=pix.height,
-                has_text_layer=has_text,
-                text_blocks=text_blocks if has_text else [],
-                ocr_text="\n".join(text_parts) if has_text else "",
-            ))
+                has_text = len(text_blocks) > 0
+                pages.append(PageData(
+                    index=i,
+                    image_path=img_path,
+                    width=pix.width,
+                    height=pix.height,
+                    has_text_layer=has_text,
+                    text_blocks=text_blocks if has_text else [],
+                    ocr_text="\n".join(text_parts) if has_text else "",
+                ))
 
-        doc.close()
         return pages
 
     def render_page_hires(self, pdf_path: Path, page_index: int, work_dir: Path) -> Path:
         """Render a single page at high resolution for OCR."""
         pdf_bytes = pdf_path.read_bytes()
-        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-        page = doc[page_index]
-        mat = fitz.Matrix(self.render_scale, self.render_scale)
-        pix = page.get_pixmap(matrix=mat)
-        out_path = work_dir / f"page_{page_index}_hires.png"
-        pix.save(str(out_path))
-        doc.close()
+        with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
+            page = doc[page_index]
+            mat = fitz.Matrix(self.render_scale, self.render_scale)
+            pix = page.get_pixmap(matrix=mat)
+            out_path = work_dir / f"page_{page_index}_hires.png"
+            pix.save(str(out_path))
         return out_path
 
     def load_image(self, image_path: Path, work_dir: Path, index: int = 0) -> PageData:

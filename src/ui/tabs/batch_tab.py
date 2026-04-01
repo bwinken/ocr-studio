@@ -216,9 +216,24 @@ class BatchTab(QWidget):
         if not output_path:
             QMessageBox.warning(self, "錯誤", "請選擇輸出資料夾")
             return
+        if Path(input_path).resolve() == Path(output_path).resolve():
+            QMessageBox.warning(self, "錯誤", "輸入和輸出資料夾不能相同，否則會覆蓋原始檔案")
+            return
         if not self._openai_service or not self._openai_service.api_key:
             QMessageBox.warning(self, "錯誤", UI["no_api_key"])
             return
+
+        # Check if output folder has existing files that would be overwritten
+        out = Path(output_path)
+        if out.is_dir() and any(out.iterdir()):
+            reply = QMessageBox.question(
+                self, "輸出資料夾不是空的",
+                "輸出資料夾已有檔案，同名檔案會被覆蓋。\n確定要繼續嗎？",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
 
         overlay_map = {0: OverlayMode.VISIBLE, 1: OverlayMode.INVISIBLE, 2: OverlayMode.REPLACE}
         overlay_mode = overlay_map.get(self._overlay_combo.currentIndex(), OverlayMode.VISIBLE)

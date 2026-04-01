@@ -86,7 +86,7 @@ class BatchWorker(QThread):
         all_exts = SUPPORTED_PDF_EXTENSIONS | SUPPORTED_IMAGE_EXTENSIONS
         return sorted(
             p for p in self._input.rglob("*")
-            if p.is_file() and p.suffix.lower() in all_exts
+            if p.is_file() and not p.is_symlink() and p.suffix.lower() in all_exts
         )
 
     def _process_file(self, filepath: Path):

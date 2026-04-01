@@ -38,7 +38,7 @@ class SystemTrayIcon(QSystemTrayIcon):
 
     def _open_settings(self):
         self._show_window()
-        self.main_window._show_settings()
+        self.main_window._open_settings()
 
     def _on_activated(self, reason):
         if reason == QSystemTrayIcon.ActivationReason.DoubleClick:

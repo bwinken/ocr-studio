@@ -165,12 +165,15 @@ class MainWindow(QWidget):
     # ── Frameless resize ──
 
     def nativeEvent(self, eventType, message):
-        if eventType == b"windows_generic_MSG":
-            msg = ctypes.wintypes.MSG.from_address(int(message))
-            if msg.message == 0x0084:
-                result = self._hit_test(self.mapFromGlobal(QCursor.pos()))
-                if result:
-                    return True, result
+        try:
+            if eventType == b"windows_generic_MSG":
+                msg = ctypes.wintypes.MSG.from_address(int(message))
+                if msg.message == 0x0084:
+                    result = self._hit_test(self.mapFromGlobal(QCursor.pos()))
+                    if result:
+                        return True, result
+        except Exception:
+            pass
         return super().nativeEvent(eventType, message)
 
     def _hit_test(self, pos):
@@ -410,34 +413,37 @@ class MainWindow(QWidget):
     # ── Open feature windows ──
 
     def _open_documents(self):
-        if not self._doc_window:
-            from src.ui.tabs.documents_tab import DocumentsTab
-            self.documents_tab = DocumentsTab(self._config)
-            self.documents_tab.set_openai_service(self._openai_service)
-            self._doc_window = FeatureWindow(UI["documents_title"], self.documents_tab)
+        if self._doc_window and self._doc_window.isVisible():
+            self._doc_window.raise_()
+            self._doc_window.activateWindow()
+            return
+        from src.ui.tabs.documents_tab import DocumentsTab
+        self.documents_tab = DocumentsTab(self._config)
+        self.documents_tab.set_openai_service(self._openai_service)
+        self._doc_window = FeatureWindow(UI["documents_title"], self.documents_tab)
         self._doc_window.show()
-        self._doc_window.raise_()
-        self._doc_window.activateWindow()
 
     def _open_batch(self):
-        if not self._batch_window:
-            from src.ui.tabs.batch_tab import BatchTab
-            self.batch_tab = BatchTab(self._config)
-            self.batch_tab.set_openai_service(self._openai_service)
-            self._batch_window = FeatureWindow(UI["batch_title"], self.batch_tab)
+        if self._batch_window and self._batch_window.isVisible():
+            self._batch_window.raise_()
+            self._batch_window.activateWindow()
+            return
+        from src.ui.tabs.batch_tab import BatchTab
+        self.batch_tab = BatchTab(self._config)
+        self.batch_tab.set_openai_service(self._openai_service)
+        self._batch_window = FeatureWindow(UI["batch_title"], self.batch_tab)
         self._batch_window.show()
-        self._batch_window.raise_()
-        self._batch_window.activateWindow()
 
     def _open_settings(self):
-        if not self._settings_window:
-            from src.ui.tabs.settings_tab import SettingsTab
-            self.settings_tab = SettingsTab(self._config)
-            self.settings_tab.settings_changed.connect(self._on_settings_changed)
-            self._settings_window = FeatureWindow(UI["settings_title"], self.settings_tab)
+        if self._settings_window and self._settings_window.isVisible():
+            self._settings_window.raise_()
+            self._settings_window.activateWindow()
+            return
+        from src.ui.tabs.settings_tab import SettingsTab
+        self.settings_tab = SettingsTab(self._config)
+        self.settings_tab.settings_changed.connect(self._on_settings_changed)
+        self._settings_window = FeatureWindow(UI["settings_title"], self.settings_tab)
         self._settings_window.show()
-        self._settings_window.raise_()
-        self._settings_window.activateWindow()
 
     # ── Service ──
 
